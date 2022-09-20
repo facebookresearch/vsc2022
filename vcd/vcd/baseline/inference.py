@@ -1,26 +1,51 @@
 #!/usr/bin/env python3
 import argparse
-import collections
 import enum
 import tqdm
 import logging
-from abc import ABC
 
 import torch.cuda
-from torch.utils.data import DataLoader, IterableDataset, get_worker_info
+from torch.utils.data import DataLoader, IterableDataset
+import torch.distributed as dist
+import torch.multiprocessing as mp
 import glob
 import os.path
 import itertools
 import numpy as np
 import subprocess
 import tempfile
-from typing import List, Tuple, Dict, Any, Iterable
+from typing import Iterable
 from torchvision.datasets.folder import default_loader
 from torch.utils.data._utils.collate import default_collate
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
 from vcd.storage import load_features, store_features
 from vcd.index import VideoFeature
+
+
+parser = argparse.ArgumentParser()
+inference_parser = parser.add_argument_group("Inference")
+inference_parser.add_argument("--torchscript_path", required=True)
+inference_parser.add_argument("--batch_size", type=int, default=32)
+inference_parser.add_argument("--distributed_rank", type=int, default=0)
+inference_parser.add_argument("--distributed_size", type=int, default=1)
+inference_parser.add_argument("--processes", type=int, default=1)
+inference_parser.add_argument("--transforms", default=1)
+inference_parser.add_argument("--output_path", required=True)
+
+dataset_parser = parser.add_argument_group("Dataset")
+dataset_parser.add_argument("--dataset_path", required=True)
+dataset_parser.add_argument("--fps", default=1, type=float)
+dataset_parser.add_argument("--video_extensions", default="mp4")
+
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("inference.py")
+logger.setLevel(logging.INFO)
 
 
 class InferenceTransforms(enum.Enum):
@@ -31,65 +56,6 @@ class InferenceTransforms(enum.Enum):
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
     )
-
-
-class ImageDataset:
-    """Abstract image dataset."""
-
-    def __init__(self, transform=None, img_transform=None, loader=default_loader):
-        self.loader = loader
-        self.transform = transform
-        self.img_transform = img_transform
-
-    def get_item(self, idx: int) -> Tuple[str, Dict[str, Any]]:
-        raise NotImplementedError()
-
-    def __len__(self):
-        raise NotImplementedError()
-
-    def __getitem__(self, idx: int):
-        assert 0 <= idx < len(self)
-        filename, record = self.get_item(idx)
-        img = self.loader(filename)
-        record["input"] = img
-        if self.img_transform:
-            record["input"] = self.img_transform(record["input"])
-        if self.transform:
-            record = self.transform(record)
-        return record
-
-
-_ = """
-class DistributedIterableDataset(IterableDataset, ABC):
-
-    rank = None
-    world_size = None
-
-    def set_distributed(self, rank, world_size):
-        self.rank = rank
-        self.world_size = world_size
-
-    def get_distributed_worker_info(self):
-        assert self.rank is not None, "Use DistributedIterableDataset subclasses with DistributedDataLoader"
-        worker_info = get_worker_info()
-        if worker_info is None:
-            num_workers = 1
-            worker_id = 0
-        else:
-            num_workers = worker_info.num_workers
-            worker_id = worker_info.id
-        worker_id += num_workers * self.rank
-        num_workers *= self.world_size
-        return worker_id, num_workers
-
-
-class DistributedDataLoader(DataLoader):
-
-    def _get_iterator(self):
-        if isinstance(self.dataset, DistributedIterableDataset):
-            self.dataset.set_distributed(get_rank(), get_world_size())
-        return super()._get_iterator()
-"""
 
 
 class VideoDataset(IterableDataset):
@@ -189,64 +155,6 @@ class VideoDataset(IterableDataset):
         return record
 
 
-parser = argparse.ArgumentParser()
-inference_parser = parser.add_argument_group("Inference")
-inference_parser.add_argument("--torchscript_path", required=True)
-inference_parser.add_argument("--batch_size", type=int, default=32)
-inference_parser.add_argument("--distributed_rank", type=int, default=0)
-inference_parser.add_argument("--distributed_size", type=int, default=1)
-inference_parser.add_argument("--processes", type=int, default=1)
-inference_parser.add_argument("--transforms", default=1)
-inference_parser.add_argument("--output_path", required=True)
-
-dataset_parser = parser.add_argument_group("Dataset")
-dataset_parser.add_argument("--dataset_path", required=True)
-dataset_parser.add_argument("--fps", default=1, type=float)
-dataset_parser.add_argument("--video_extensions", default="mp4")
-
-
-logging.basicConfig(
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    level=logging.INFO,
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger("inference.py")
-logger.setLevel(logging.INFO)
-
-
-@torch.no_grad()
-def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
-    name = None
-    embeddings = []
-    timestamps = []
-
-    for batch in dataloader:
-        names = batch["name"]
-        assert names[0] == names[-1]  # single-video batches
-        if name is not None and name != names[0]:
-            yield VideoFeature(
-                video_id=name,
-                timestamps=np.concatenate(timestamps),
-                feature=np.concatenate(embeddings, axis=0),
-            )
-            # TODO: do something with it
-            embeddings = []
-            timestamps = []
-        name = names[0]
-        img = batch["input"].to(device)
-        embeddings.append(model(img).cpu().numpy())
-        timestamps.append(batch["timestamp"].numpy())
-
-    yield VideoFeature(
-        video_id=name,
-        timestamps=np.concatenate(timestamps),
-        feature=np.concatenate(embeddings, axis=0),
-    )
-
-import torch.distributed as dist
-import torch.multiprocessing as mp
-
-
 def main(args):
     if args.processes > 1 and args.distributed_size > 1:
         raise Exception(
@@ -262,7 +170,10 @@ def main(args):
         backend = "nccl" if torch.cuda.is_available() else "gloo"
         try:
             for rank in range(args.processes):
-                p = mp.Process(target=distributed_worker_process, args=(args, rank, args.processes, backend))
+                p = mp.Process(
+                    target=distributed_worker_process,
+                    args=(args, rank, args.processes, backend),
+                )
                 p.start()
                 processes.append(p)
             for p in processes:
@@ -276,8 +187,8 @@ def main(args):
 
 
 def distributed_worker_process(args, rank, world_size, backend):
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29528'
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "29528"
     dist.init_process_group(backend, rank=rank, world_size=world_size)
     worker_process(args, rank, world_size)
 
@@ -314,6 +225,36 @@ def worker_process(args, rank, world_size):
         with open(os.path.join(worker_output_path, f"{vf.video_id}.npz"), "wb") as f:
             store_features(f, [vf])
         progress.update()
+
+
+@torch.no_grad()
+def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
+    name = None
+    embeddings = []
+    timestamps = []
+
+    for batch in dataloader:
+        names = batch["name"]
+        assert names[0] == names[-1]  # single-video batches
+        if name is not None and name != names[0]:
+            yield VideoFeature(
+                video_id=name,
+                timestamps=np.concatenate(timestamps),
+                feature=np.concatenate(embeddings, axis=0),
+            )
+            # TODO: do something with it
+            embeddings = []
+            timestamps = []
+        name = names[0]
+        img = batch["input"].to(device)
+        embeddings.append(model(img).cpu().numpy())
+        timestamps.append(batch["timestamp"].numpy())
+
+    yield VideoFeature(
+        video_id=name,
+        timestamps=np.concatenate(timestamps),
+        feature=np.concatenate(embeddings, axis=0),
+    )
 
 
 if __name__ == "__main__":
