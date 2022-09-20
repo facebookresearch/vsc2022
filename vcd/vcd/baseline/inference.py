@@ -195,6 +195,7 @@ inference_parser.add_argument("--torchscript_path", required=True)
 inference_parser.add_argument("--batch_size", type=int, default=32)
 inference_parser.add_argument("--distributed_rank", type=int, default=0)
 inference_parser.add_argument("--distributed_size", type=int, default=1)
+inference_parser.add_argument("--processes", type=int, default=1)
 inference_parser.add_argument("--transforms", default=1)
 inference_parser.add_argument("--output_path", required=True)
 
@@ -242,8 +243,47 @@ def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
         feature=np.concatenate(embeddings, axis=0),
     )
 
+import torch.distributed as dist
+import torch.multiprocessing as mp
+
 
 def main(args):
+    if args.processes > 1 and args.distributed_size > 1:
+        raise Exception(
+            "Set either --processes (single-machine distributed) or "
+            "both --distributed_size and --distributed_rank (arbitrary "
+            "distributed)"
+        )
+    if args.processes > 1:
+        processes = []
+        mp.set_start_method("spawn")
+        logging.info(f"Spawning {args.processes} processes")
+        # TODO: figure out devices, backend
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        try:
+            for rank in range(args.processes):
+                p = mp.Process(target=distributed_worker_process, args=(args, rank, args.processes, backend))
+                p.start()
+                processes.append(p)
+            for p in processes:
+                p.join()
+            processes = []
+        finally:
+            for p in processes:
+                p.kill()
+    else:
+        worker_process(args, args.distributed_rank, args.distributed_size)
+
+
+def distributed_worker_process(args, rank, world_size, backend):
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '29528'
+    dist.init_process_group(backend, rank=rank, world_size=world_size)
+    worker_process(args, rank, world_size)
+
+
+def worker_process(args, rank, world_size):
+    logger.info(f"Starting worker {rank} of {world_size}.")
     logger.info("Loading model")
     model = torch.jit.load(args.torchscript_path)
     model.eval()
@@ -251,15 +291,14 @@ def main(args):
     # TODO: configure
     transforms = InferenceTransforms.SSCD.value
     extensions = args.video_extensions.split(",")
-    # batch_size = args.batch_size if args.preserve_aspect_ratio else None
     dataset = VideoDataset(
         args.dataset_path,
         fps=args.fps,
         img_transform=transforms,
         batch_size=args.batch_size,
         extensions=extensions,
-        distributed_world_size=args.distributed_size,
-        distributed_rank=args.distributed_rank,
+        distributed_world_size=world_size,
+        distributed_rank=rank,
     )
     device = torch.device("cpu")
     if torch.cuda.is_available():
@@ -267,10 +306,7 @@ def main(args):
     model = model.to(device)
     loader = DataLoader(dataset, pin_memory=True, batch_size=None)
 
-    if args.distributed_size > 1:
-        worker_output_path = os.path.join(args.output_path, str(args.distributed_rank))
-    else:
-        worker_output_path = args.output_path
+    worker_output_path = os.path.join(args.output_path, str(rank))
     os.makedirs(worker_output_path, exist_ok=True)
 
     progress = tqdm.tqdm(total=dataset.num_videos())
