@@ -1,54 +1,7 @@
-import os
-from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 from vcd.index import VideoFeature
-
-
-class BaseStorage(ABC):
-    """
-    Interface to save and load features from storage backend
-    """
-
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def _save_impl(self, feature: np.ndarray, path: str):
-        pass
-
-    def _load_impl(self, path: str) -> np.ndarray:
-        pass
-
-    def save(self, features: Dict[str, np.ndarray], path: str):
-        os.makedirs(path, exist_ok=True)
-        for name, feature in features.items():
-            self._save_impl(feature, os.path.join(path, name))
-
-    def load(self, path: str) -> Dict[str, np.ndarray]:
-        assert os.path.isdir(
-            path
-        ), "path: {path}, needs to point to a directory containing features"
-        features = {}
-        for root, _, files in os.walk(path):
-            for f in files:
-                features[f] = self._load_impl(os.path.join(root, f))
-        return features
-
-
-class NumpyStorage(BaseStorage):
-    def __init__(self):
-        super().__init__()
-
-    def _save_impl(self, feature: np.ndarray, path: str):
-        with open(path, "wb") as f:
-            np.save(f, feature)
-
-    def _load_impl(self, path: str) -> np.ndarray:
-        with open(path, "rb") as f:
-            feature = np.load(f)
-        return feature
 
 
 def store_features(f, features: List[VideoFeature]):
