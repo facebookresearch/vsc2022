@@ -2,7 +2,7 @@
 
 ```
 conda create --name vcd -c pytorch -c conda-forge pytorch torchvision \
-  scikit-learn numpy pandas matplotlib faiss
+  scikit-learn numpy pandas matplotlib faiss tqdm
 ```
 
 We don't need pytorch for the codebase currently; this is just the environment I used.
@@ -16,7 +16,7 @@ The [VCSL](https://github.com/alipay/VCSL) codebase is used to localize matches 
 ```
 conda create --name vcd-vcsl -c pytorch -c conda-forge pytorch torchvision \
   scikit-learn numpy pandas matplotlib faiss networkx loguru numba cython \
-  h5py
+  h5py tqdm
 conda activate vcd-vcsl
 pip install tslearn
 ```

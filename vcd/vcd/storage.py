@@ -9,7 +9,7 @@ def store_features(f, features: List[VideoFeature]):
     feats = []
     timestamps = []
     for feature in features:
-        video_ids.append(np.full(len(feature), feature.video_id, dtype=np.int32))
+        video_ids.append(np.full(len(feature), feature.video_id))
         feats.append(feature.feature)
         timestamps.append(feature.timestamps)
     video_ids = np.concatenate(video_ids)
