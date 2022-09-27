@@ -98,7 +98,7 @@ def distributed_worker_process(args, rank, world_size, backend):
 
 def worker_process(args, rank, world_size):
     # Late import: initialize cuda after worker spawn.
-    from vcd.baseline.inference_impl import worker_process as worker_impl
+    from .inference_impl import worker_process as worker_impl  # @manual
 
     return worker_impl(args, rank, world_size)
 

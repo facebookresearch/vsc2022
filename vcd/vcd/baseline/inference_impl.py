@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import glob
 import itertools
 import logging
@@ -84,7 +83,6 @@ class VideoDataset(IterableDataset):
 
     def __iter__(self):
         for i, video in self.selected_videos:
-            # logging.info("Reading video %d of %d: %s", i, len(self.videos), os.path.basename(video))
             if self.batch_size:
                 frames = self.read_frames(i, video)
                 while True:
@@ -115,26 +113,20 @@ class VideoDataset(IterableDataset):
                 ],
                 stderr=null,
             )
-            # logging.info("Reading %s frames", video_name)
             i = 0
             while True:
                 frame_fn = os.path.join(dir, f"{i:07d}.jpg")
-                # logging.info("Try file %s", frame_fn)
                 if not os.path.exists(frame_fn):
                     break
                 yield self.read_frame(video_id, video_name, i, frame_fn)
                 i += 1
-            # logging.info("Got %d frames for %s", i, video_name)
 
     def read_frame(self, video_id, video_name, frame_id, frame_fn):
         img = default_loader(frame_fn)
         name = os.path.basename(video_name).split(".")[0]
         record = {
             "name": name,
-            # "video_id": video_id,
-            # "frame_id": frame_id,
             "timestamp": frame_id / self.fps,
-            # "instance_id": video_id * 10e8 + frame_id,
         }
         if self.img_transform:
             img = self.img_transform(img)
