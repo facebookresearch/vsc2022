@@ -4,7 +4,7 @@ import faiss  # @manual
 
 import numpy as np
 
-from vcd.index import VideoFeature, VideoIndex
+from vsc.index import VideoFeature, VideoIndex
 
 
 class IndexTest(unittest.TestCase):

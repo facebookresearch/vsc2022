@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 
-from vcd.baseline.candidates import CandidateGeneration, MaxScoreAggregation
-from vcd.index import VideoFeature
-from vcd.metrics import CandidatePair
+from vsc.baseline.candidates import CandidateGeneration, MaxScoreAggregation
+from vsc.index import VideoFeature
+from vsc.metrics import CandidatePair
 
 
 class CandidateGenerationTest(unittest.TestCase):

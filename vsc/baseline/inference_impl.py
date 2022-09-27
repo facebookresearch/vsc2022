@@ -13,9 +13,9 @@ from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data._utils.collate import default_collate
 from torchvision import transforms
 from torchvision.datasets.folder import default_loader
-from vcd.baseline.inference import Accelerator, InferenceTransforms
-from vcd.index import VideoFeature
-from vcd.storage import store_features
+from vsc.baseline.inference import Accelerator, InferenceTransforms
+from vsc.index import VideoFeature
+from vsc.storage import store_features
 
 
 logging.basicConfig(

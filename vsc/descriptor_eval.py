@@ -1,8 +1,8 @@
 from argparse import ArgumentParser, Namespace
 
-from vcd.baseline.candidates import CandidateGeneration, MaxScoreAggregation
-from vcd.metrics import average_precision, CandidatePair, Match
-from vcd.storage import load_features
+from vsc.baseline.candidates import CandidateGeneration, MaxScoreAggregation
+from vsc.metrics import average_precision, CandidatePair, Match
+from vsc.storage import load_features
 
 K = 5
 

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from vcd.metrics import (
+from vsc.metrics import (
     average_precision,
     CandidatePair,
     evaluate_matching_track,

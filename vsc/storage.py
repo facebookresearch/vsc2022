@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from vcd.index import VideoFeature
+from vsc.index import VideoFeature
 
 
 def store_features(f, features: List[VideoFeature]):

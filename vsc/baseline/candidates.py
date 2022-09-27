@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
-from vcd.index import PairMatches, VideoFeature, VideoIndex
-from vcd.metrics import CandidatePair
+from vsc.index import PairMatches, VideoFeature, VideoIndex
+from vsc.metrics import CandidatePair
 
 
 class ScoreAggregation(ABC):

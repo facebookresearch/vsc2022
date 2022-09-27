@@ -4,8 +4,8 @@ import unittest
 import numpy as np
 from numpy.testing import assert_allclose
 
-from vcd.index import VideoFeature
-from vcd.storage import load_features, store_features
+from vsc.index import VideoFeature
+from vsc.storage import load_features, store_features
 
 
 class SorageTest(unittest.TestCase):

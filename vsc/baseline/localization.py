@@ -3,8 +3,8 @@ from typing import List
 
 import numpy as np
 
-from vcd.index import VideoFeature
-from vcd.metrics import CandidatePair, Match
+from vsc.index import VideoFeature
+from vsc.metrics import CandidatePair, Match
 
 
 class Localization(abc.ABC):

@@ -3,10 +3,10 @@ import unittest
 import numpy as np
 
 from sklearn.preprocessing import normalize
-from vcd.baseline.candidates import CandidatePair
-from vcd.baseline.localization import VCSLLocalizationMaxSim
+from vsc.baseline.candidates import CandidatePair
+from vsc.baseline.localization import VCSLLocalizationMaxSim
 
-from vcd.index import VideoFeature
+from vsc.index import VideoFeature
 
 try:
     from vcsl.vta import build_vta_model  # @manual  # noqa: F401
