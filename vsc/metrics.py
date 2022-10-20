@@ -58,6 +58,16 @@ class PrecisionRecallCurve:
     recalls: np.ndarray
     scores: np.ndarray
 
+    def plot(self, ax=None, **kwargs):
+        if ax is None:
+            _, ax = plt.subplots()
+            ax.set_xlabel("recall")
+            ax.set_ylabel("precision")
+            ax.set_xlim(0, 1.05)
+            ax.set_ylim(0, 1.05)
+        ax.plot(self.recalls, self.precisions, **kwargs)
+        return ax
+
 
 @dataclasses.dataclass
 class AveragePrecision:

@@ -28,8 +28,8 @@ class CandidateGeneration:
         self.index = VideoIndex(dim)
         self.index.add(references)
 
-    def query(self, queries: List[VideoFeature], k: int = 20) -> List[CandidatePair]:
-        matches = self.index.search(queries, k=k)
+    def query(self, queries: List[VideoFeature], global_k: int) -> List[CandidatePair]:
+        matches = self.index.search(queries, global_k=global_k)
         candidates = [self.aggregation.score(match) for match in matches]
         candidates = sorted(candidates, key=lambda match: match.score, reverse=True)
         return candidates

@@ -31,7 +31,7 @@ class IndexTest(unittest.TestCase):
             for idx, feature in enumerate(test_feature)
         ]
 
-        index = VideoIndex(3, "Flat", faiss.METRIC_L1)
+        index = VideoIndex(3, "Flat", faiss.METRIC_L2)
         index.add(db)
         results = index.search(query, 1)
         for result in results:

@@ -2,9 +2,7 @@ import glob
 import itertools
 import logging
 import os
-import subprocess
-import tempfile
-from typing import Iterable
+from typing import Iterable, List
 
 import numpy as np
 import torch
@@ -12,10 +10,10 @@ import tqdm
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data._utils.collate import default_collate
 from torchvision import transforms
-from torchvision.datasets.folder import default_loader
-from vsc.baseline.inference import Accelerator, InferenceTransforms
+from vsc.baseline.inference import Accelerator, InferenceTransforms, VideoReaderType
+from vsc.baseline.video_reader.ffmpeg_video_reader import FFMpegVideoReader
 from vsc.index import VideoFeature
-from vsc.storage import store_features
+from vsc.storage import load_features, store_features
 
 
 logging.basicConfig(
@@ -29,7 +27,7 @@ logger.setLevel(logging.INFO)
 
 def build_transforms(transform: InferenceTransforms):
     return {
-        InferenceTransforms.SSCD: transforms.Compose(
+        InferenceTransforms.RESIZE_288: transforms.Compose(
             [
                 transforms.Resize(288),
                 transforms.ToTensor(),
@@ -37,7 +35,17 @@ def build_transforms(transform: InferenceTransforms):
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 ),
             ]
-        )
+        ),
+        InferenceTransforms.RESIZE_320_CENTER: transforms.Compose(
+            [
+                transforms.Resize(320),
+                transforms.CenterCrop(320),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        ),
     }[transform]
 
 
@@ -53,6 +61,7 @@ class VideoDataset(IterableDataset):
         extensions=("mp4",),
         distributed_rank=0,
         distributed_world_size=1,
+        video_reader=VideoReaderType.FFMPEG,
         ffmpeg_path="ffmpeg",
     ):
         assert distributed_rank < distributed_world_size
@@ -60,6 +69,7 @@ class VideoDataset(IterableDataset):
         self.fps = fps
         self.batch_size = batch_size
         self.img_transform = img_transform
+        self.video_reader = video_reader
         self.ffmpeg_path = ffmpeg_path
         if len(extensions) == 1:
             filenames = glob.glob(os.path.join(path, f"*.{extensions[0]}"))
@@ -94,44 +104,19 @@ class VideoDataset(IterableDataset):
                 yield from self.read_frames(i, video)
 
     def read_frames(self, video_id, video):
-        with tempfile.TemporaryDirectory() as dir, open(os.devnull, "w") as null:
-            video_name = os.path.basename(video)
-            subprocess.check_call(
-                [
-                    self.ffmpeg_path,
-                    "-nostdin",
-                    "-y",
-                    "-i",
-                    video,
-                    "-start_number",
-                    "0",
-                    "-q",
-                    "0",
-                    "-vf",
-                    "fps=%f" % self.fps,
-                    os.path.join(dir, "%07d.jpg"),
-                ],
-                stderr=null,
-            )
-            i = 0
-            while True:
-                frame_fn = os.path.join(dir, f"{i:07d}.jpg")
-                if not os.path.exists(frame_fn):
-                    break
-                yield self.read_frame(video_id, video_name, i, frame_fn)
-                i += 1
-
-    def read_frame(self, video_id, video_name, frame_id, frame_fn):
-        img = default_loader(frame_fn)
+        video_name = os.path.basename(video)
         name = os.path.basename(video_name).split(".")[0]
-        record = {
-            "name": name,
-            "timestamp": frame_id / self.fps,
-        }
-        if self.img_transform:
-            img = self.img_transform(img)
-        record["input"] = img
-        return record
+        if self.video_reader == VideoReaderType.FFMPEG:
+            reader = FFMpegVideoReader(
+                video_path=video, required_fps=self.fps, ffmpeg_path=self.ffmpeg_path
+            )
+        else:
+            raise ValueError(f"VideoReaderType: {self.video_reader} not supported")
+        for timestamp_s, frame in reader.frames():
+            if self.img_transform:
+                frame = self.img_transform(frame)
+            record = {"name": name, "timestamp": timestamp_s, "input": frame}
+            yield record
 
 
 def should_use_cuda(args) -> bool:
@@ -157,7 +142,7 @@ def get_device(args, rank, world_size):
     return torch.device("cpu")
 
 
-def worker_process(args, rank, world_size):
+def worker_process(args, rank, world_size, output_filename):
     logger.info(f"Starting worker {rank} of {world_size}.")
     device = get_device(args, rank, world_size)
     logger.info("Loading model")
@@ -166,6 +151,7 @@ def worker_process(args, rank, world_size):
     logger.info("Setting up dataset")
     transforms = build_transforms(InferenceTransforms[args.transforms])
     extensions = args.video_extensions.split(",")
+    video_reader = VideoReaderType[args.video_reader.upper()]
     dataset = VideoDataset(
         args.dataset_path,
         fps=args.fps,
@@ -174,18 +160,27 @@ def worker_process(args, rank, world_size):
         extensions=extensions,
         distributed_world_size=world_size,
         distributed_rank=rank,
+        video_reader=video_reader,
         ffmpeg_path=args.ffmpeg_path,
     )
     model = model.to(device)
     loader = DataLoader(dataset, batch_size=None, pin_memory=device.type == "cuda")
-    worker_output_path = os.path.join(args.output_path, str(rank))
-    os.makedirs(worker_output_path, exist_ok=True)
 
     progress = tqdm.tqdm(total=dataset.num_videos())
+    vfs = []
     for vf in run_inference(loader, model, device):
-        with open(os.path.join(worker_output_path, f"{vf.video_id}.npz"), "wb") as f:
-            store_features(f, [vf])
+        vfs.append(vf)
         progress.update()
+
+    del loader
+    del model
+    del dataset
+
+    logger.info(f"Storing worker {rank} outputs")
+    store_features(output_filename, vfs)
+    logger.info(
+        f"Wrote worker {rank} features for {len(vfs)} videos to {output_filename}"
+    )
 
 
 @torch.no_grad()
@@ -215,3 +210,11 @@ def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
         timestamps=np.concatenate(timestamps),
         feature=np.concatenate(embeddings, axis=0),
     )
+
+
+def merge_feature_files(filenames: List[str], output_filename: str) -> int:
+    features = []
+    for fn in filenames:
+        features.extend(load_features(fn))
+    store_features(output_filename, features)
+    return len(features)

@@ -36,7 +36,7 @@ class CandidateGenerationTest(unittest.TestCase):
                     ],
                     dtype=np.float32,
                 ),
-                timestamps=[2.0, 4.0, 6.0, 8.0],
+                timestamps=[2.0, 4.0, 6.0, 8.0, 10.0],
             ),
             VideoFeature(
                 video_id=8,
@@ -65,7 +65,7 @@ class CandidateGenerationTest(unittest.TestCase):
         ]
 
         cg = CandidateGeneration(refs, MaxScoreAggregation())
-        candidates = cg.query(queries, k=2)
+        candidates = cg.query(queries, 2 * 3)
 
         self.assertEqual(3, len(candidates))
         self.assertEqual(
