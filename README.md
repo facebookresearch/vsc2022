@@ -46,18 +46,15 @@ When run, localization tests warn about unclosed multiprocessing pools.
 ## Descriptor eval
 
 ```
-$ python -m vsc.descriptor_eval --query_path vsc_eval_data/queries.npz --ref_path vsc_eval_data/refs.npz --gt_path vsc_eval_data/gt.csv
+$ python -m vsc.descriptor_eval --query_features vsc_eval_data/queries.npz --ref_features vsc_eval_data/refs.npz --ground_truth vsc_eval_data/gt.csv
 Starting Descriptor level eval
-Loaded 997 query features
-Loaded 4974 ref features
-Performing KNN with k: 5
-Loaded GT from ../vsc_eval_data/gt.csv
-Micro AP : 0.79020867778352
+...
+2022-10-20 12:23:09 INFO     Descriptor track micro-AP (uAP): 0.7894
 ```
 
 ## Matching track eval
 
 ```
-$ python -c 'from vsc.metrics import evaluate_matching_track; metrics = evaluate_matching_track("vsc_eval_data/gt.csv", "vsc_eval_data/matches.csv"); print(f"matching ap = {metrics.segment_ap_v2.ap}")'
-matching ap = 0.5047952268737359
+$ python -m vsc.matching_eval --predictions vsc_eval_data/matches.csv --ground_truth vsc_eval_data/gt.csv
+Matching track segment AP: 0.5048
 ```
