@@ -31,13 +31,21 @@ class LocalizationWithMetadata(Localization):
 
 
 class VCSLLocalization(LocalizationWithMetadata):
-    def __init__(self, queries, refs, model_type, **kwargs):
+    def __init__(self, queries, refs, model_type, similarity_bias=0.0, **kwargs):
         super().__init__(queries, refs)
 
         # Late import: allow OSS use without VCSL installed
         from vcsl.vta import build_vta_model  # @manual
 
         self.model = build_vta_model(model_type, **kwargs)
+        self.similarity_bias = similarity_bias
+
+    def similarity(self, candidate: CandidatePair):
+        """Add an optional similarity bias.
+
+        Some localization methods do not tolerate negative values well.
+        """
+        return super().similarity(candidate) + self.similarity_bias
 
     def localize_all(self, candidates: List[CandidatePair]) -> List[Match]:
         sims = [(f"{c.query_id}-{c.ref_id}", self.similarity(c)) for c in candidates]
@@ -73,7 +81,7 @@ class VCSLLocalization(LocalizationWithMetadata):
 class VCSLLocalizationMaxSim(VCSLLocalization):
     def score(self, candidate: CandidatePair, match: Match, box, similarity) -> float:
         x1, y1, x2, y2 = box
-        return similarity[x1:x2, y1:y2].max()
+        return similarity[x1:x2, y1:y2].max() - self.similarity_bias
 
 
 class VCSLLocalizationCandidateScore(VCSLLocalization):
