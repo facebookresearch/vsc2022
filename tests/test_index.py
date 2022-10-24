@@ -8,7 +8,7 @@ from vsc.index import VideoFeature, VideoIndex
 
 
 class IndexTest(unittest.TestCase):
-    def test_video_index(self):
+    def run_video_index_test(self, global_k: int):
         # test_feature = np.random.rand(50, 50, 32)
         test_feature = np.array(
             [
@@ -33,6 +33,12 @@ class IndexTest(unittest.TestCase):
 
         index = VideoIndex(3, "Flat", faiss.METRIC_L2)
         index.add(db)
-        results = index.search(query, 1)
+        results = index.search(query, global_k)
         for result in results:
             self.assertEqual(result.query_id, result.ref_id)
+
+    def test_global_candidate_search(self):
+        self.run_video_index_test(1)
+
+    def test_knn_search(self):
+        self.run_video_index_test(-1)

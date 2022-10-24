@@ -154,8 +154,10 @@ class VideoIndex:
     def _knn_search(self, query_features: np.ndarray, k) -> Iterable[SearchIndices]:
         index = self.index
         if faiss.get_num_gpus() > 0:
+            logging.info("Moving index to GPU")
             index = faiss.index_cpu_to_all_gpus(self.index)
 
+        logging.info("Performing KNN search")
         similarity, ids = index.search(query_features, k)
         for i in range(ids.shape[0]):
             for j in range(ids.shape[1]):
