@@ -5,9 +5,8 @@ Descriptor track evaluation script.
 import logging
 from argparse import ArgumentParser, Namespace
 
-from vsc.candidates import CandidateGeneration, MaxScoreAggregation
-from vsc.metrics import average_precision, CandidatePair, Match
-from vsc.storage import load_features
+from vsc.descriptor_eval_lib import evaluate_descriptor_track
+from vsc.metrics import CandidatePair
 
 parser = ArgumentParser()
 parser.add_argument(
@@ -37,41 +36,12 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("descriptor_eval.py")
+logger = logging.getLogger("descriptor_eval_lib.py")
 logger.setLevel(logging.INFO)
 
 
-RETRIEVAL_CANDIDATES_PER_QUERY = 20 * 60  # similar to K=20 for ~60 second videos
-AGGREGATED_CANDIDATES_PER_QUERY = 25
-
-
 def main(args: Namespace):
-    logger.info("Starting Descriptor level eval")
-    query_features = load_features(args.query_features, expected_prefix="Q")
-    logger.info(f"Loaded {len(query_features)} query features")
-    ref_features = load_features(args.ref_features, expected_prefix="R")
-    logger.info(f"Loaded {len(ref_features)} ref features")
-    gt_matches = Match.read_csv(args.ground_truth, is_gt=True)
-    gt_pairs = CandidatePair.from_matches(gt_matches)
-    logger.info(f"Loaded ground truth from {args.ground_truth}")
-
-    # TODO: require a fixed number of input videos per track.
-    # TODO: emit threshold that the search uses
-    retrieval_candidates = int(RETRIEVAL_CANDIDATES_PER_QUERY * len(query_features))
-    num_candidates = int(AGGREGATED_CANDIDATES_PER_QUERY * len(query_features))
-
-    logger.info(f"Performing search for {retrieval_candidates} nearest vectors")
-    cg = CandidateGeneration(ref_features, MaxScoreAggregation())
-    candidates = cg.query(query_features, global_k=retrieval_candidates)
-    logger.info(f"Got {len(candidates)} unique video pairs.")
-    if len(candidates) > num_candidates:
-        logger.info(f"Limiting to {num_candidates} highest score pairs.")
-        score_candidates = candidates[:num_candidates]
-    else:
-        score_candidates = candidates
-
-    ap = average_precision(gt_pairs, score_candidates)
-    logger.info(f"Descriptor track micro-AP (uAP): {ap.ap:.4f}")
+    ap, candidates = evaluate_descriptor_track(args.query_features, args.ref_features, args.ground_truth)
 
     if args.candidates_output:
         logger.info(f"Storing candidates to {args.candidates_output}")
