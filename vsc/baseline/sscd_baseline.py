@@ -22,7 +22,7 @@ import faiss  # @manual
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import normalize
-from vsc.baseline.candidates import CandidateGeneration, MaxScoreAggregation
+from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.baseline.localization import (
     VCSLLocalizationCandidateScore,
     VCSLLocalizationMaxSim,

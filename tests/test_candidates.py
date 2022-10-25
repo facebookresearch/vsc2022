@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from vsc.baseline.candidates import CandidateGeneration, MaxScoreAggregation
+from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.index import VideoFeature
 from vsc.metrics import CandidatePair
 

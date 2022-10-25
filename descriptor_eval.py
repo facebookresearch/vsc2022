@@ -5,7 +5,7 @@ Descriptor track evaluation script.
 import logging
 from argparse import ArgumentParser, Namespace
 
-from vsc.baseline.candidates import CandidateGeneration, MaxScoreAggregation
+from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.metrics import average_precision, CandidatePair, Match
 from vsc.storage import load_features
 
