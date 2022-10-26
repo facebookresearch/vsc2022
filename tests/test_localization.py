@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 
 from sklearn.preprocessing import normalize
-from vsc.candidates import CandidatePair
 from vsc.baseline.localization import VCSLLocalizationMaxSim
+from vsc.candidates import CandidatePair
 
 from vsc.index import VideoFeature
 

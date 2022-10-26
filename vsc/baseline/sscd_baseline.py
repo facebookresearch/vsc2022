@@ -19,12 +19,12 @@ from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
-from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.baseline.localization import (
     VCSLLocalizationCandidateScore,
     VCSLLocalizationMaxSim,
 )
 from vsc.baseline.score_normalization import score_normalize, transform_features
+from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.index import VideoFeature
 from vsc.metrics import (
     average_precision,

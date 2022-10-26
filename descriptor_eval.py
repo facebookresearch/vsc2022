@@ -41,7 +41,9 @@ logger.setLevel(logging.INFO)
 
 
 def main(args: Namespace):
-    ap, candidates = evaluate_descriptor_track(args.query_features, args.ref_features, args.ground_truth)
+    ap, candidates = evaluate_descriptor_track(
+        args.query_features, args.ref_features, args.ground_truth
+    )
 
     if args.candidates_output:
         logger.info(f"Storing candidates to {args.candidates_output}")

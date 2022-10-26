@@ -1,8 +1,8 @@
 import dataclasses
 import logging
-from typing import List, Tuple, Callable
+from typing import Callable, List, Tuple
 
-import faiss
+import faiss  # @manual
 import numpy as np
 from sklearn.preprocessing import normalize
 
