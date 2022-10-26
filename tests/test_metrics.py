@@ -220,5 +220,18 @@ class EvaluateDescriptorTrackTest(unittest.TestCase):
         self.assertEqual(candidates, recovered)
 
 
+class MatchTest(unittest.TestCase):
+    def test_serialization(self):
+        matches = [
+            Match(4, 8, 10, 14, score=1.0, query_id=10, ref_id=100),
+            Match(8, 14, 14, 18, score=2.0, query_id=11, ref_id=101),
+        ]
+        with io.StringIO() as buf:
+            Match.write_csv(matches, buf)
+            buf.seek(0)
+            recovered = Match.read_csv(buf)
+        self.assertEqual(matches, recovered)
+
+
 if __name__ == "__main__":
     unittest.main()
