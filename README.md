@@ -40,16 +40,3 @@ Matching track segment AP: 0.5048
 ## License
 
 The SSCD codebase uses the [MIT license](LICENSE).
-
-## Citation
-
-If you find our codebase useful, please consider giving a star :star: and cite as:
-
-```bibtex
-@misc{vsc2022codebase,
-  title={Video Similarity Challenge codebase},
-  author={Pizzi, Ed and Kordopatis-Zilos, Giorgos and Nagavara Ravindra, Sugosh},
-  year={2022},
-  howpublished="\url{https://github.com/facebookresearch/vsc2022}"
-}
-```
