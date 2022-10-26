@@ -216,9 +216,9 @@ def main(args):
 
     # Matching track metric:
     match_metrics = evaluate_matching_track(args.ground_truth, match_file)
-    logger.info(f"Matching track metric: {match_metrics.segment_ap_v2.ap:.4f}")
+    logger.info(f"Matching track metric: {match_metrics.segment_ap.ap:.4f}")
     matching_pr_file = os.path.join(args.output_path, "precision_recall.pdf")
-    create_pr_plot(match_metrics.segment_ap_v2, matching_pr_file)
+    create_pr_plot(match_metrics.segment_ap, matching_pr_file)
     logger.info(f"Candidates: {candidate_file}")
     logger.info(f"Matches: {match_file}")
     logger.info(f"Candidate PR plot: {candidate_pr_file}")

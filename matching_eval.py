@@ -34,7 +34,7 @@ logger.setLevel(logging.INFO)
 
 def main(args: Namespace):
     metrics = evaluate_matching_track(args.ground_truth, args.predictions)
-    segment_ap = metrics.segment_ap_v2.ap
+    segment_ap = metrics.segment_ap.ap
     print(f"Matching track segment AP: {segment_ap:.4f}")
 
 

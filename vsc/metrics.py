@@ -428,7 +428,7 @@ def match_metric_v2(
 @dataclasses.dataclass
 class MatchingTrackMetrics:
     # Our main evaluation metric.
-    segment_ap_v2: AveragePrecision
+    segment_ap: AveragePrecision
     # This metric reflects only pairwise matching, and not localization.
     pairwise_micro_ap: AveragePrecision
 
@@ -459,7 +459,7 @@ def evaluate_matching_track(
     gt_pairs = CandidatePair.from_matches(gt)
     pairs = CandidatePair.from_matches(predictions)
     pair_ap = average_precision(gt_pairs, pairs)
-    return MatchingTrackMetrics(segment_ap_v2=metric, pairwise_micro_ap=pair_ap)
+    return MatchingTrackMetrics(segment_ap=metric, pairwise_micro_ap=pair_ap)
 
 
 def average_precision(

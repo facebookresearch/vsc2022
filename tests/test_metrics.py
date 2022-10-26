@@ -150,7 +150,7 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
                 Match.write_csv(gt, gt_file.name)
                 Match.write_csv(detections, detection_file.name)
                 metrics = evaluate_matching_track(gt_file.name, detection_file.name)
-                return metrics.segment_ap_v2.ap
+                return metrics.segment_ap.ap
 
     def run_test_inline(self, gt_str, detections_str) -> float:
         with tempfile.NamedTemporaryFile("wt") as gt_file:
@@ -160,7 +160,7 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
                 detection_file.write(detections_str)
                 detection_file.flush()
                 metrics = evaluate_matching_track(gt_file.name, detection_file.name)
-                return metrics.segment_ap_v2.ap
+                return metrics.segment_ap.ap
 
     def test_multiple_pairs(self):
         gt = [Match(4, 14, 10, 18, query_id=1, ref_id=2)]
