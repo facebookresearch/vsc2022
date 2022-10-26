@@ -179,10 +179,6 @@ class Match(NamedTuple):
     @classmethod
     def write_csv(cls, matches: Collection["Match"], file: Union[str, TextIO]):
         df = pd.DataFrame([match._asdict() for match in matches], columns=cls._fields)
-        if is_numeric_dtype(df.query_id.dtype) and (df.query_id < 100_000).all():
-            df["query_id"] = df.query_id.map(lambda x: f"Q{x:05d}")
-        if is_numeric_dtype(df.ref_id.dtype) and (df.ref_id < 100_000).all():
-            df["ref_id"] = df.ref_id.map(lambda x: f"R{x:05d}")
         df.to_csv(file, index=False)
 
     @classmethod
