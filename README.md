@@ -24,7 +24,7 @@ See [baseline](docs/baseline.md)
 ### Descriptor eval
 
 ```
-$ python -m vsc.descriptor_eval --query_features vsc_eval_data/queries.npz --ref_features vsc_eval_data/refs.npz --ground_truth vsc_eval_data/gt.csv
+$ ./descriptor_eval.py --query_features vsc_eval_data/queries.npz --ref_features vsc_eval_data/refs.npz --ground_truth vsc_eval_data/gt.csv
 Starting Descriptor level eval
 ...
 2022-10-20 12:23:09 INFO     Descriptor track micro-AP (uAP): 0.7894
@@ -33,7 +33,7 @@ Starting Descriptor level eval
 ### Matching track eval
 
 ```
-$ python -m vsc.matching_eval --predictions vsc_eval_data/matches.csv --ground_truth vsc_eval_data/gt.csv
+$ ./matching_eval.py --predictions vsc_eval_data/matches.csv --ground_truth vsc_eval_data/gt.csv
 Matching track segment AP: 0.5048
 ```
 
