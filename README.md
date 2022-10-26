@@ -39,4 +39,4 @@ Matching track segment AP: 0.5048
 
 ## License
 
-The SSCD codebase uses the [MIT license](LICENSE).
+The VSC codebase is released under the [MIT license](LICENSE).
