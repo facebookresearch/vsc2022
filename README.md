@@ -50,6 +50,6 @@ If you find our codebase useful, please consider giving a star :star: and cite a
   title={Video Similarity Challenge codebase},
   author={Pizzi, Ed and Kordopatis-Zilos, Giorgos and Nagavara Ravindra, Sugosh},
   year={2022},
-  url={https://github.com/facebookresearch/vsc2022}
+  howpublished="\url{https://github.com/facebookresearch/vsc2022}"
 }
 ```
