@@ -334,7 +334,7 @@ def match_metric_single_axis(gt: Intervals, preds: Sequence[Tuple[float, float]]
 
 
 def match_metric_v1(gt: Collection[Match], predictions: Collection[Match]):
-    """V1 metric:
+    """Old matching track metric:
 
     Geometric mean of temporal (1D) uAP across both time axes (query and ref).
     """
@@ -348,10 +348,10 @@ def match_metric_v1(gt: Collection[Match], predictions: Collection[Match]):
     return metrics + [sqrt(metric)]
 
 
-def match_metric_v2(
+def match_metric(
     gts: Collection[Match], predictions: Collection[Match], visualize: bool = False
 ) -> AveragePrecision:
-    """V2 metric:
+    """Matching track metric:
 
     Computes the AP based on the VCSL approach for the
     calculation of Precision and Recall.
@@ -454,7 +454,7 @@ def evaluate_matching_track(
     """
     gt = Match.read_csv(ground_truth_filename, is_gt=True)
     predictions = Match.read_csv(predictions_filename)
-    metric = match_metric_v2(gt, predictions)
+    metric = match_metric(gt, predictions)
     # Auxiliary metric: pairwise uAP
     gt_pairs = CandidatePair.from_matches(gt)
     pairs = CandidatePair.from_matches(predictions)

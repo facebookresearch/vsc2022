@@ -10,7 +10,7 @@ from vsc.metrics import (
     Intervals,
     Match,
     match_metric_v1,
-    match_metric_v2,
+    match_metric,
 )
 
 
@@ -125,7 +125,7 @@ class MatchMetricV1Test(MatchMetricTestBase, unittest.TestCase):
 
 class MatchMetricV2Test(MatchMetricTestBase, unittest.TestCase):
     def match(self, gt, predictions):
-        return match_metric_v2(gt, predictions).ap
+        return match_metric(gt, predictions).ap
 
     def test_vcsl_fig4f(self):
         self.assertAlmostEqual(0.0, self.vcsl_fig4f())
