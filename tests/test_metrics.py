@@ -175,7 +175,7 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
     def test_multiple_pairs_inline(self):
         # Score column not specified (not needed for GT)
         gt = """query_start,query_end,ref_start,ref_end,query_id,ref_id
-4,14,10,18,1,2
+4,14,10,18,Q1,R2
 """
         # Columns in a different order
         predictions = """query_id,ref_id,query_start,query_end,ref_start,ref_end,score

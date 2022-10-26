@@ -19,6 +19,7 @@ from typing import (
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 
 @dataclasses.dataclass
@@ -185,12 +186,33 @@ class Match(NamedTuple):
         cls, file: Union[str, TextIO], is_gt=False, check=True
     ) -> List["Match"]:
         df = pd.read_csv(file)
+        df["query_id"] = cls._video_id_field(df, "query_id", "Q")
+        df["ref_id"] = cls._video_id_field(df, "ref_id", "R")
         if is_gt:
             df["score"] = 1.0
         if check:
             for field in cls._fields:
                 assert not df[field].isna().any()
         return [Match(**record) for record in df.to_dict("records")]
+
+    @classmethod
+    def _video_id_field(
+        cls, df: pd.DataFrame, field: str, expected_prefix: str
+    ) -> Sequence[int]:
+        if not len(df):
+            return []
+        values = df[field]
+        if is_numeric_dtype(values.dtype):
+            return values
+        if not is_string_dtype(values.dtype):
+            raise Exception(f"Unexpected dtype for {field} column: {values.dtype}")
+        mismatched = values.str.startswith(expected_prefix) == False
+        if mismatched.any():
+            example = values[mismatched][0]
+            raise Exception(
+                f"Expected video IDs to begin with {expected_prefix}, got: {example}"
+            )
+        return values.str[1:].astype(int)
 
 
 class VideoPair:
