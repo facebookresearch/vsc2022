@@ -72,6 +72,33 @@ class MatchMetricTestBase:
         metric = self.match(gt, detections)
         self.assertLess(metric, 0.5)
 
+    def test_robustness(self):
+        """Robustness evaluation of the metric
+
+        Asserts that the order of the results does not affect the
+        metric calculation.
+        """
+        gt = [Match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
+        detections = [
+            Match(4, 10, 10, 14, score=3.0, query_id="Q1", ref_id="R2"),
+            Match(4, 10, 10, 14, score=3.0, query_id="Q2", ref_id="R1"),
+            Match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
+            Match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R2"),
+            Match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R1"),
+            Match(10, 14, 14, 18, score=1.0, query_id="Q1", ref_id="R2"),
+        ]
+
+        # Predictions with different ordering for to the metric calculation.
+        metrics = []
+        for i in range(10):
+            np.random.shuffle(detections)
+            metrics.append(self.match(gt, detections))
+
+        # All metric scores must be the same
+        for i in range(10):
+            for j in range(10):
+                self.assertEqual(metrics[i], metrics[j])
+
     def vcsl_fig4f(self):
         # Figure 4 (f) example from the VCSL paper.
         # In this case, we have two GT bounding boxes and two prediction bounding boxes.
