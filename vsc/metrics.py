@@ -366,27 +366,21 @@ def match_metric_v2(
     for score, prediction_group in itertools.groupby(
         predictions, key=lambda x: x.score
     ):
-        intersection_deltas = {axis: 0.0 for axis in Axis}
-        total_deltas = {axis: 0.0 for axis in Axis}
         for prediction in prediction_group:
             # Given new predictions, we only need the differences in the intersection with
             # gt and total video length covered for both query and reference axes.
             # This derives from the sum of differences for every pair id
+            intersection_deltas, total_deltas = video_pairs[
+                prediction.pair_id()
+            ].add_prediction(prediction)
             recalls = {}
             precisions = {}
-            pair_deltas = video_pairs[prediction.pair_id()].add_prediction(prediction)
-            for aggregated, pair in zip(
-                [intersection_deltas, total_deltas], pair_deltas
-            ):
-                for axis in Axis:
-                    aggregated[axis] += pair[axis]
-
-        for axis in Axis:
-            # Accumulate the differences to the corresponding values
-            intersections[axis] += intersection_deltas[axis]
-            totals[axis] += total_deltas[axis]
-            recalls[axis] = intersections[axis] / gt_total_lengths[axis]
-            precisions[axis] = intersections[axis] / totals[axis]
+            for axis in Axis:
+                # Accumulate the differences to the corresponding values
+                intersections[axis] += intersection_deltas[axis]
+                totals[axis] += total_deltas[axis]
+                recalls[axis] = intersections[axis] / gt_total_lengths[axis]
+                precisions[axis] = intersections[axis] / totals[axis]
 
         new_recall = sqrt(recalls[Axis.QUERY] * recalls[Axis.REF])
         precision = sqrt(precisions[Axis.QUERY] * precisions[Axis.REF])
