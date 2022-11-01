@@ -95,13 +95,13 @@ class Intervals:
     def union(self, intervals: "Intervals") -> "Intervals":
         return Intervals(self.intervals + intervals.intervals)
 
-    def total_length(self):
+    def total_length(self) -> float:
         length = 0.0
         for start, end in self.intervals:
             length += end - start
         return length
 
-    def intersect_length(self, intervals: "Intervals") -> "Intervals":
+    def intersect_length(self, intervals: "Intervals") -> float:
         """Compute the total_length of the intersection of two Intervals.
 
         This works by taking the sum of their lengths, and subtracting
@@ -229,15 +229,15 @@ class VideoPair:
     def __init__(
         self,
     ):
-        self.intersections = {axis: 0 for axis in Axis}
-        self.totals = {axis: 0 for axis in Axis}
+        self.intersections = {axis: 0.0 for axis in Axis}
+        self.totals = {axis: 0.0 for axis in Axis}
         self.gts = []
         self.preds = []
 
-    def total_gt_length(self, axis: Axis) -> int:
+    def total_gt_length(self, axis: Axis) -> float:
         return Intervals([gt.interval(axis) for gt in self.gts]).total_length()
 
-    def total_pred_length(self, axis: Axis) -> int:
+    def total_pred_length(self, axis: Axis) -> float:
         return Intervals([pred.interval(axis) for pred in self.preds]).total_length()
 
     def gt_overlaps(self, gt: Match) -> bool:
@@ -250,7 +250,9 @@ class VideoPair:
     def add_gt(self, bbox: Match):
         self.gts.append(bbox)
 
-    def add_prediction(self, bbox: Match) -> Tuple[Dict, Dict]:
+    def add_prediction(
+        self, bbox: Match
+    ) -> Tuple[Dict[Axis, float], Dict[Axis, float]]:
         """Add a prediction to the corresponding list and calculates the
         differences in the intersections with the gt and the total video
         length covered for both query and reference axes.
@@ -309,7 +311,9 @@ class VideoPair:
         plt.show()
 
 
-def match_metric_single_axis(gt: Intervals, preds: Sequence[Tuple[float, float]]):
+def match_metric_single_axis(
+    gt: Intervals, preds: Sequence[Tuple[float, float]]
+) -> float:
     """Computes a single-axis matching metric.
 
     This is equivalent to micro-AP over time units.
@@ -378,8 +382,8 @@ def match_metric(
     # Loop through the predictions
     recall = 0.0
     metric = 0.0
-    intersections = {axis: 0 for axis in Axis}
-    totals = {axis: 0 for axis in Axis}
+    intersections = {axis: 0.0 for axis in Axis}
+    totals = {axis: 0.0 for axis in Axis}
     pr_recalls = []
     pr_precisions = []
     pr_scores = []
