@@ -11,7 +11,7 @@ from typing import (
     Sequence,
     TextIO,
     Tuple,
-    Union,
+    Union, Dict, Any,
 )
 
 import matplotlib.pyplot as plt
@@ -226,12 +226,14 @@ class VideoPair:
     def add_gt(self, bbox: Match):
         self.gts.append(bbox)
 
-    def add_prediction(self, bbox: Match) -> Tuple[float, float, float, float]:
+    def add_predictions(self, bboxs: List[Match]) -> tuple[dict[Any], dict[Any]]:
         """Add a prediction to the corresponding list and calculates the
         differences in the intersections with the gt and the total video
         length covered for both query and reference axes.
         """
-        self.preds.append(bbox)
+        for bbox in bboxs:
+            self.preds.append(bbox)
+
         # A subset of GTs to consider for intersection (but not total GT length).
         gts_to_consider = [gt for gt in self.gts if self.gt_overlaps(gt)]
 
@@ -358,20 +360,34 @@ def match_metric_v2(
     pr_recalls = []
     pr_precisions = []
     pr_scores = []
-    for pred in predictions:
-        pair_id = pred.pair_id()
-        # Given a new prediction, we only need the differences in the intersection with
-        # gt and total video length covered for both query and reference axes.
-        intersection_deltas, total_deltas = video_pairs[pair_id].add_prediction(pred)
+    prev_score = -1.
+    for i, pred in enumerate(predictions):
+        # Skip prediction if it has the same score as the previous one,
+        # because it has already been considered in the calculation.
+        if pred.score == prev_score:
+            continue
 
+        # Gather all predictions with the same score grouped based on their pair ids
+        all_pairs = defaultdict(list)
+        for later_pred in predictions[i:]:
+            if pred.score != later_pred.score:
+                break
+            pair_id = later_pred.pair_id()
+            all_pairs[pair_id].append(later_pred)
+
+            # Given new predictions, we only need the differences in the intersection with
+        # gt and total video length covered for both query and reference axes.
+        # This derives from the sum of differences for every pair id
         recalls = {}
         precisions = {}
-        for axis in Axis:
-            # Accumulate the differences to the corresponding values
-            intersections[axis] += intersection_deltas[axis]
-            totals[axis] += total_deltas[axis]
-            recalls[axis] = intersections[axis] / gt_total_lengths[axis]
-            precisions[axis] = intersections[axis] / totals[axis]
+        for pair_id, preds in all_pairs.items():
+            intersection_deltas, total_deltas = video_pairs[pair_id].add_predictions(preds)
+            for axis in Axis:
+                # Accumulate the differences to the corresponding values
+                intersections[axis] += intersection_deltas[axis]
+                totals[axis] += total_deltas[axis]
+                recalls[axis] = intersections[axis] / gt_total_lengths[axis]
+                precisions[axis] = intersections[axis] / totals[axis]
 
         new_recall = sqrt(recalls[Axis.QUERY] * recalls[Axis.REF])
         precision = sqrt(precisions[Axis.QUERY] * precisions[Axis.REF])
