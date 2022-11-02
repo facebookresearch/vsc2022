@@ -311,47 +311,6 @@ class VideoPair:
         plt.show()
 
 
-def match_metric_single_axis(
-    gt: Intervals, preds: Sequence[Tuple[float, float]]
-) -> float:
-    """Computes a single-axis matching metric.
-
-    This is equivalent to micro-AP over time units.
-
-    :param gt Ground-truth match intervals.
-    :param preds Predictions, ordered by confidence (most confident first).
-      Possibly overlapping.
-    """
-    pred_ints = Intervals()
-    gt_length = gt.total_length()
-    recall = 0.0
-    metric = 0.0
-    for interval in preds:
-        pred_ints.add(interval)
-        intersect_length = pred_ints.intersect_length(gt)
-        new_recall = intersect_length / gt_length
-        precision = intersect_length / pred_ints.total_length()
-        delta_recall = new_recall - recall
-        metric += precision * delta_recall
-        recall = new_recall
-    return metric
-
-
-def match_metric_v1(gt: Collection[Match], predictions: Collection[Match]):
-    """Old matching track metric:
-
-    Geometric mean of temporal (1D) uAP across both time axes (query and ref).
-    """
-    predictions = sorted(predictions, key=lambda x: x.score, reverse=True)
-    metrics = []
-    for axis in [Axis.QUERY, Axis.REF]:
-        gt_int = Intervals([i.interval(axis) for i in gt])
-        preds = [i.interval(axis) for i in predictions]
-        metrics.append(match_metric_single_axis(gt_int, preds))
-    metric = metrics[0] * metrics[1]
-    return metrics + [sqrt(metric)]
-
-
 def match_metric(
     gts: Collection[Match], predictions: Collection[Match], visualize: bool = False
 ) -> AveragePrecision:

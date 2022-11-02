@@ -9,7 +9,6 @@ from vsc.metrics import (
     evaluate_matching_track,
     Intervals,
     Match,
-    match_metric_v1,
     match_metric,
 )
 
@@ -72,6 +71,40 @@ class MatchMetricTestBase:
         metric = self.match(gt, detections)
         self.assertLess(metric, 0.5)
 
+    def vcsl_fig4f(self):
+        # Figure 4 (f) example from the VCSL paper.
+        # In this case, we have two GT bounding boxes and two prediction bounding boxes.
+        # Since there is no overlap between the GT and pred bboxes, the results
+        # of our metric should be close to zero. However, with the initial implementation,
+        # it is one. Yet, it becomes zero if we consider only the GT bboxs that overlap
+        # with the predictions.
+        gt = [Match(4, 14, 10, 18), Match(20, 28, 21, 29)]
+        detections = [
+            Match(4, 14, 21, 29, score=1.0),
+            Match(20, 28, 10, 18, score=1.0),
+        ]
+        return self.match(gt, detections)
+
+
+class MatchMetricTest(MatchMetricTestBase, unittest.TestCase):
+    def match(self, gt, predictions):
+        return match_metric(gt, predictions).ap
+
+    def test_vcsl_fig4f(self):
+        self.assertAlmostEqual(0.0, self.vcsl_fig4f())
+
+    def test_multiple_pairs(self):
+        gt = [Match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
+        detections = [
+            Match(4, 14, 10, 18, score=3.0, query_id="Q2", ref_id="R2"),
+            Match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
+            Match(4, 14, 10, 18, score=1.0, query_id="Q1", ref_id="R2"),
+        ]
+        metric = self.match(gt, detections)
+        # AP ~= 1/3, since precision is 1/3 by the time the lowest-score
+        # correct pair prediction is seen.
+        self.assertAlmostEqual(metric, 1 / 3.0)
+
     def test_robustness(self):
         """Robustness evaluation of the metric
 
@@ -98,49 +131,6 @@ class MatchMetricTestBase:
         for i in range(10):
             for j in range(10):
                 self.assertEqual(metrics[i], metrics[j])
-
-    def vcsl_fig4f(self):
-        # Figure 4 (f) example from the VCSL paper.
-        # In this case, we have two GT bounding boxes and two prediction bounding boxes.
-        # Since there is no overlap between the GT and pred bboxes, the results
-        # of our metric should be close to zero. However, with the initial implementation,
-        # it is one. Yet, it becomes zero if we consider only the GT bboxs that overlap
-        # with the predictions.
-        gt = [Match(4, 14, 10, 18), Match(20, 28, 21, 29)]
-        detections = [
-            Match(4, 14, 21, 29, score=1.0),
-            Match(20, 28, 10, 18, score=1.0),
-        ]
-        return self.match(gt, detections)
-
-
-class MatchMetricV1Test(MatchMetricTestBase, unittest.TestCase):
-    def match(self, gt, predictions):
-        return match_metric_v1(gt, predictions)[-1]
-
-    def test_vcsl_fig4f(self):
-        # Not an important property, but note that this is a weakness of the v1 metric
-        self.assertAlmostEqual(1.0, self.vcsl_fig4f())
-
-
-class MatchMetricV2Test(MatchMetricTestBase, unittest.TestCase):
-    def match(self, gt, predictions):
-        return match_metric(gt, predictions).ap
-
-    def test_vcsl_fig4f(self):
-        self.assertAlmostEqual(0.0, self.vcsl_fig4f())
-
-    def test_multiple_pairs(self):
-        gt = [Match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
-        detections = [
-            Match(4, 14, 10, 18, score=3.0, query_id="Q2", ref_id="R2"),
-            Match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
-            Match(4, 14, 10, 18, score=1.0, query_id="Q1", ref_id="R2"),
-        ]
-        metric = self.match(gt, detections)
-        # AP ~= 1/3, since precision is 1/3 by the time the lowest-score
-        # correct pair prediction is seen.
-        self.assertAlmostEqual(metric, 1 / 3.0)
 
 
 class EvaluateMatchingTrackTest(unittest.TestCase):
