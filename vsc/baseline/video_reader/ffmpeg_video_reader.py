@@ -20,7 +20,7 @@ class FFMpegVideoReader(VideoReader):
     def fps(self) -> Optional[float]:
         return None
 
-    def frames(self) -> Iterable[Tuple[float, ImageT]]:
+    def frames(self) -> Iterable[Tuple[float, float, ImageT]]:
         with tempfile.TemporaryDirectory() as dir, open(os.devnull, "w") as null:
             subprocess.check_call(
                 [
@@ -46,4 +46,4 @@ class FFMpegVideoReader(VideoReader):
                     break
                 img = default_loader(frame_fn)
                 i += 1
-                yield ((i - 1) / self.original_fps, img)
+                yield ((i - 1) / self.original_fps, i / self.original_fps, img)

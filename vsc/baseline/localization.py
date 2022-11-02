@@ -53,18 +53,18 @@ class VCSLLocalization(LocalizationWithMetadata):
         assert len(results) == len(candidates)
         matches = []
         for (candidate, (key, sim), result) in zip(candidates, sims, results):
-            q_ts = self.queries[candidate.query_id].timestamps
-            r_ts = self.refs[candidate.ref_id].timestamps
+            query: VideoFeature = self.queries[candidate.query_id]
+            ref: VideoFeature = self.refs[candidate.ref_id]
             assert key == result[0]
             for box in result[1]:
                 (x1, y1, x2, y2) = box
                 match = Match(
                     query_id=candidate.query_id,
                     ref_id=candidate.ref_id,
-                    query_start=q_ts[x1],
-                    query_end=q_ts[x2],
-                    ref_start=r_ts[y1],
-                    ref_end=r_ts[y2],
+                    query_start=query.get_timestamps(x1)[0],
+                    query_end=query.get_timestamps(x2)[1],
+                    ref_start=ref.get_timestamps(y1)[0],
+                    ref_end=ref.get_timestamps(y2)[1],
                 )
                 score = self.score(candidate, match, box, sim)
                 match = match._replace(score=score)

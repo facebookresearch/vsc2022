@@ -20,7 +20,7 @@ class CandidateGenerationTest(unittest.TestCase):
                     ],
                     dtype=np.float32,
                 ),
-                timestamps=[0.0, 1.0, 2.0],
+                timestamps=np.array([0.0, 1.0, 2.0]),
             ),
         ]
         refs = [
@@ -36,7 +36,7 @@ class CandidateGenerationTest(unittest.TestCase):
                     ],
                     dtype=np.float32,
                 ),
-                timestamps=[2.0, 4.0, 6.0, 8.0, 10.0],
+                timestamps=np.array([2.0, 4.0, 6.0, 8.0, 10.0]),
             ),
             VideoFeature(
                 video_id=8,
@@ -48,7 +48,7 @@ class CandidateGenerationTest(unittest.TestCase):
                     ],
                     dtype=np.float32,
                 ),
-                timestamps=[0.0, 5.0, 10.0],
+                timestamps=np.array([[0.0, 5.0], [5.0, 10.0], [10.0, 15.0]]),
             ),
             VideoFeature(
                 video_id=10,
@@ -60,7 +60,7 @@ class CandidateGenerationTest(unittest.TestCase):
                     ],
                     dtype=np.float32,
                 ),
-                timestamps=[0.0, 0.1, 0.2],
+                timestamps=np.array([0.0, 0.1, 0.2]),
             ),
         ]
 

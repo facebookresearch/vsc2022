@@ -13,10 +13,16 @@ SearchIndices = Tuple[int, int, float]
 @dataclass
 class VideoMetadata:
     video_id: Union[str, int]  # either 12345 or "Q12345"
-    timestamps: np.ndarray
+    timestamps: np.ndarray  # either Nx2 (start and end timestamps) or N
 
     def __len__(self):
-        return len(self.timestamps)
+        return self.timestamps.shape[0]
+
+    def get_timestamps(self, idx: int) -> Tuple[float, float]:
+        t = self.timestamps[idx]
+        if len(self.timestamps.shape) == 1:
+            return (t, t)
+        return (t[0], t[1])
 
 
 @dataclass
@@ -36,8 +42,8 @@ class VideoFeature(VideoMetadata):
 
 
 class PairMatch(NamedTuple):
-    query_timestamp: float
-    ref_timestamp: float
+    query_timestamps: Tuple[float, float]
+    ref_timestamps: Tuple[float, float]
     score: float
 
 
@@ -52,8 +58,10 @@ class PairMatches:
             yield {
                 "query_id": self.query_id,
                 "ref_id": self.ref_id,
-                "query_ts": match.query_timestamp,
-                "ref_ts": match.ref_timestamp,
+                "query_start": match.query_timestamps[0],
+                "query_end": match.query_timestamps[1],
+                "ref_start": match.ref_timestamps[0],
+                "ref_end": match.ref_timestamps[1],
                 "score": match.score,
             }
 
@@ -115,8 +123,8 @@ class VideoIndex:
             ref_idx = self.video_clip_idx[j]
             ref_metadata = self.video_metadata[ref_id]
             match = PairMatch(
-                query_timestamp=query_metadata.timestamps[query_idx],
-                ref_timestamp=ref_metadata.timestamps[ref_idx],
+                query_timestamps=query_metadata.get_timestamps(query_idx),
+                ref_timestamps=ref_metadata.get_timestamps(ref_idx),
                 score=score,
             )
             pair_nns[query_id, ref_id].append(match)

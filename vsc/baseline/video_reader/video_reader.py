@@ -19,8 +19,8 @@ class VideoReader(ABC):
         pass
 
     @abstractmethod
-    def frames(self) -> Iterable[Tuple[float, ImageT]]:
+    def frames(self) -> Iterable[Tuple[float, float, ImageT]]:
         """
-        returns a tuple of [timestamp, Image]
+        returns a tuple of [start_time, end_time, Image]
         """
         pass

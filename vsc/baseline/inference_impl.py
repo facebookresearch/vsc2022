@@ -112,10 +112,14 @@ class VideoDataset(IterableDataset):
             )
         else:
             raise ValueError(f"VideoReaderType: {self.video_reader} not supported")
-        for timestamp_s, frame in reader.frames():
+        for start_timestamp, end_timestamp, frame in reader.frames():
             if self.img_transform:
                 frame = self.img_transform(frame)
-            record = {"name": name, "timestamp": timestamp_s, "input": frame}
+            record = {
+                "name": name,
+                "timestamp": np.array([start_timestamp, end_timestamp]),
+                "input": frame,
+            }
             yield record
 
 
@@ -195,7 +199,7 @@ def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
         if name is not None and name != names[0]:
             yield VideoFeature(
                 video_id=name,
-                timestamps=np.concatenate(timestamps),
+                timestamps=np.concatenate(timestamps, axis=0),
                 feature=np.concatenate(embeddings, axis=0),
             )
             embeddings = []
@@ -207,7 +211,7 @@ def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
 
     yield VideoFeature(
         video_id=name,
-        timestamps=np.concatenate(timestamps),
+        timestamps=np.concatenate(timestamps, axis=0),
         feature=np.concatenate(embeddings, axis=0),
     )
 

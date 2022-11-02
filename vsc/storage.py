@@ -55,6 +55,17 @@ def load_features(f, expected_prefix=None) -> List[VideoFeature]:
     feats = data["features"]
     timestamps = data["timestamps"]
 
+    ts_dims = len(timestamps.shape)
+    if timestamps.shape[0] != feats.shape[0]:
+        raise ValueError(
+            f"Expected the same number of timestamps as features: got "
+            f"{timestamps.shape[0]} timestamps for {feats.shape[0]} features"
+        )
+    if not (ts_dims == 1 or timestamps.shape[1:] == (2,)):
+        print(f"timestamps.shape[1:]: {timestamps.shape[1:]}")
+        print(f"timestamps.shape[1:] == [2]: {timestamps.shape[1:] == [2]}")
+        raise ValueError(f"Unexpected timestamp shape. Got {timestamps.shape}")
+
     results = []
     for video_id, start, end in same_value_ranges(video_ids):
         video_id = video_id_int(video_id, expected_prefix=expected_prefix)
