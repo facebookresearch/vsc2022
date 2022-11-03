@@ -30,6 +30,7 @@ from vsc.metrics import (
     average_precision,
     AveragePrecision,
     CandidatePair,
+    Dataset,
     evaluate_matching_track,
     Match,
 )
@@ -181,8 +182,8 @@ def main(args):
         raise Exception(
             f"Output path already exists: {args.output_path}. Do you want to --overwrite?"
         )
-    queries = load_features(args.query_features)
-    refs = load_features(args.ref_features)
+    queries = load_features(args.query_features, Dataset.QUERIES)
+    refs = load_features(args.ref_features, Dataset.REFS)
     score_normalization = False
     if args.score_norm_features:
         queries, refs = score_normalize(

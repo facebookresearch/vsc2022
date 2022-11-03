@@ -19,13 +19,29 @@ from typing import (
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_numeric_dtype, is_string_dtype
+
+
+class Dataset(enum.Enum):
+    QUERIES = "Q"
+    REFS = "R"
+
+
+def format_video_id(video_id: Union[str, int], dataset: Optional[Dataset]) -> str:
+    if isinstance(video_id, int):
+        if dataset is None:
+            raise ValueError(
+                "Unable to convert integer video_id without a Dataset enum"
+            )
+        return f"{dataset.value}{video_id:06d}"
+    elif dataset is not None:
+        assert video_id[0] == dataset.value, f"dataset mismatch? got {video_id} for dataset {dataset}"
+    return video_id
 
 
 @dataclasses.dataclass
 class CandidatePair:
-    query_id: int
-    ref_id: int
+    query_id: str
+    ref_id: str
     score: float
 
     @classmethod
@@ -33,15 +49,28 @@ class CandidatePair:
         cls, candidates: Collection["CandidatePair"], file: Union[str, TextIO]
     ):
         df = pd.DataFrame(
-            [dataclasses.asdict(c) for c in candidates],
-            columns=[field.name for field in dataclasses.fields(cls)],
+            [
+                {
+                    "query_id": format_video_id(c.query_id, Dataset.QUERIES),
+                    "ref_id": format_video_id(c.ref_id, Dataset.REFS),
+                    "score": c.score,
+                }
+                for c in candidates
+            ],
         )
         df.to_csv(file, index=False)
 
     @classmethod
     def read_csv(cls, file: Union[str, TextIO]) -> List["CandidatePair"]:
         df = pd.read_csv(file)
-        return [CandidatePair(**record) for record in df.to_dict("records")]
+        pairs = []
+        for _, row in df.iterrows():
+            query_id = format_video_id(row.query_id, Dataset.QUERIES)
+            ref_id = format_video_id(row.ref_id, Dataset.REFS)
+            pairs.append(
+                CandidatePair(query_id=query_id, ref_id=ref_id, score=row.score)
+            )
+        return pairs
 
     @classmethod
     def from_matches(cls, matches: Collection["Match"]) -> List["CandidatePair"]:
@@ -143,13 +172,13 @@ class Axis(enum.Enum):
 class Match(NamedTuple):
     """A ground-truth match or predicted match."""
 
+    query_id: str
+    ref_id: str
+    score: float
     query_start: float
     query_end: float
     ref_start: float
     ref_end: float
-    score: float = 1.0
-    query_id: Optional[int] = None
-    ref_id: Optional[int] = None
 
     def pair_id(self):
         return (self.query_id, self.ref_id)
@@ -186,33 +215,14 @@ class Match(NamedTuple):
         cls, file: Union[str, TextIO], is_gt=False, check=True
     ) -> List["Match"]:
         df = pd.read_csv(file)
-        df["query_id"] = cls._video_id_field(df, "query_id", "Q")
-        df["ref_id"] = cls._video_id_field(df, "ref_id", "R")
+        df["query_id"] = df.query_id.map(lambda x: format_video_id(x, Dataset.QUERIES))
+        df["ref_id"] = df.ref_id.map(lambda x: format_video_id(x, Dataset.REFS))
         if is_gt:
             df["score"] = 1.0
         if check:
             for field in cls._fields:
                 assert not df[field].isna().any()
         return [Match(**record) for record in df.to_dict("records")]
-
-    @classmethod
-    def _video_id_field(
-        cls, df: pd.DataFrame, field: str, expected_prefix: str
-    ) -> Sequence[int]:
-        if not len(df):
-            return []
-        values = df[field]
-        if is_numeric_dtype(values.dtype):
-            return values
-        if not is_string_dtype(values.dtype):
-            raise Exception(f"Unexpected dtype for {field} column: {values.dtype}")
-        mismatched = values.str.startswith(expected_prefix) == False
-        if mismatched.any():
-            example = values[mismatched][0]
-            raise Exception(
-                f"Expected video IDs to begin with {expected_prefix}, got: {example}"
-            )
-        return values.str[1:].astype(int)
 
 
 class VideoPair:

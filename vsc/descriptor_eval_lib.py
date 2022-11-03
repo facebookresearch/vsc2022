@@ -2,7 +2,7 @@ import logging
 from typing import List, Tuple
 
 from vsc.candidates import CandidateGeneration, MaxScoreAggregation
-from vsc.metrics import average_precision, AveragePrecision, CandidatePair, Match
+from vsc.metrics import average_precision, AveragePrecision, CandidatePair, Dataset, Match
 from vsc.storage import load_features
 
 logger = logging.getLogger("descriptor_eval_lib.py")
@@ -17,9 +17,9 @@ def evaluate_descriptor_track(
     query_feature_filename: str, ref_feature_filename: str, ground_truth_filename: str
 ) -> Tuple[AveragePrecision, List[CandidatePair]]:
     logger.info("Starting Descriptor level eval")
-    query_features = load_features(query_feature_filename, expected_prefix="Q")
+    query_features = load_features(query_feature_filename, Dataset.QUERIES)
     logger.info(f"Loaded {len(query_features)} query features")
-    ref_features = load_features(ref_feature_filename, expected_prefix="R")
+    ref_features = load_features(ref_feature_filename, Dataset.REFS)
     logger.info(f"Loaded {len(ref_features)} ref features")
     gt_matches = Match.read_csv(ground_truth_filename, is_gt=True)
     gt_pairs = CandidatePair.from_matches(gt_matches)

@@ -65,6 +65,7 @@ class VCSLLocalization(LocalizationWithMetadata):
                     query_end=query.get_timestamps(x2)[1],
                     ref_start=ref.get_timestamps(y1)[0],
                     ref_end=ref.get_timestamps(y2)[1],
+                    score=0.0,
                 )
                 score = self.score(candidate, match, box, sim)
                 match = match._replace(score=score)

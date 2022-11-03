@@ -20,13 +20,17 @@ class IndexTest(unittest.TestCase):
         )
         query = [
             VideoFeature(
-                video_id=idx, feature=feature, timestamps=np.arange(3, dtype=np.float32)
+                video_id=f"Q{idx:06d}",
+                feature=feature,
+                timestamps=np.arange(3, dtype=np.float32),
             )
             for idx, feature in enumerate(test_feature)
         ]
         db = [
             VideoFeature(
-                video_id=idx, feature=feature, timestamps=np.arange(3, dtype=np.float32)
+                video_id=f"R{idx:06d}",
+                feature=feature,
+                timestamps=np.arange(3, dtype=np.float32),
             )
             for idx, feature in enumerate(test_feature)
         ]
@@ -35,7 +39,7 @@ class IndexTest(unittest.TestCase):
         index.add(db)
         results = index.search(query, global_k)
         for result in results:
-            self.assertEqual(result.query_id, result.ref_id)
+            self.assertEqual(result.query_id[1:], result.ref_id[1:])
 
     def test_global_candidate_search(self):
         self.run_video_index_test(1)

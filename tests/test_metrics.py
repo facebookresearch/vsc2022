@@ -6,11 +6,33 @@ import numpy as np
 from vsc.metrics import (
     average_precision,
     CandidatePair,
+    Dataset,
     evaluate_matching_track,
+    format_video_id,
     Intervals,
     Match,
     match_metric,
 )
+
+
+def match(
+    query_start,
+    query_end,
+    ref_start,
+    ref_end,
+    score=1.0,
+    query_id="Q1",
+    ref_id="R2",
+):
+    return Match(
+        query_id=query_id,
+        ref_id=ref_id,
+        query_start=query_start,
+        query_end=query_end,
+        ref_start=ref_start,
+        ref_end=ref_end,
+        score=score,
+    )
 
 
 class IntervalTest(unittest.TestCase):
@@ -24,33 +46,33 @@ class IntervalTest(unittest.TestCase):
 
 
 class MatchMetricTestBase:
-    def match(self, gt, predictions):
+    def score(self, gt, predictions):
         raise NotImplementedError()
 
     def test_perfect(self):
         """Perfect prediction."""
-        gt = [Match(4, 14, 10, 18)]
-        detections = [Match(4, 14, 10, 18, score=1.0)]
-        self.assertAlmostEqual(1.0, self.match(gt, detections))
+        gt = [match(4, 14, 10, 18)]
+        detections = [match(4, 14, 10, 18, score=1.0)]
+        self.assertAlmostEqual(1.0, self.score(gt, detections))
 
     def test_split(self):
         """Segment split across two predictions."""
-        gt = [Match(4, 14, 10, 18)]
+        gt = [match(4, 14, 10, 18)]
         detections = [
-            Match(4, 8, 10, 14, score=1.0),
-            Match(8, 14, 14, 18, score=2.0),
+            match(4, 8, 10, 14, score=1.0),
+            match(8, 14, 14, 18, score=2.0),
         ]
-        self.assertAlmostEqual(1.0, self.match(gt, detections))
+        self.assertAlmostEqual(1.0, self.score(gt, detections))
 
     def test_imperfect_calibrated(self):
         """A pretty good performance, reasonably well calibrated."""
-        gt = [Match(4, 14, 10, 18)]
+        gt = [match(4, 14, 10, 18)]
         detections = [
-            Match(4, 8, 10, 14, score=1.0),
-            Match(8, 14, 16, 18, score=2.0),
-            Match(0, 30, 5, 25, score=0.0),  # imprecise detection comes last
+            match(4, 8, 10, 14, score=1.0),
+            match(8, 14, 16, 18, score=2.0),
+            match(0, 30, 5, 25, score=0.0),  # imprecise detection comes last
         ]
-        metric = self.match(gt, detections)
+        metric = self.score(gt, detections)
         self.assertLess(metric, 1.0)
         self.assertGreater(metric, 0.9)
 
@@ -60,15 +82,15 @@ class MatchMetricTestBase:
         This example is the same as above, except for the score of the
         inaccurate prediction.
         """
-        gt = [Match(4, 14, 10, 18)]
+        gt = [match(4, 14, 10, 18)]
         detections = [
-            Match(4, 8, 10, 14, score=1.0),
-            Match(8, 14, 16, 18, score=2.0),
-            Match(
+            match(4, 8, 10, 14, score=1.0),
+            match(8, 14, 16, 18, score=2.0),
+            match(
                 0, 30, 5, 25, score=3.0
             ),  # miscalibrated; imprecise detection ranked first
         ]
-        metric = self.match(gt, detections)
+        metric = self.score(gt, detections)
         self.assertLess(metric, 0.5)
 
     def vcsl_fig4f(self):
@@ -78,29 +100,29 @@ class MatchMetricTestBase:
         # of our metric should be close to zero. However, with the initial implementation,
         # it is one. Yet, it becomes zero if we consider only the GT bboxs that overlap
         # with the predictions.
-        gt = [Match(4, 14, 10, 18), Match(20, 28, 21, 29)]
+        gt = [match(4, 14, 10, 18), match(20, 28, 21, 29)]
         detections = [
-            Match(4, 14, 21, 29, score=1.0),
-            Match(20, 28, 10, 18, score=1.0),
+            match(4, 14, 21, 29, score=1.0),
+            match(20, 28, 10, 18, score=1.0),
         ]
-        return self.match(gt, detections)
+        return self.score(gt, detections)
 
 
 class MatchMetricTest(MatchMetricTestBase, unittest.TestCase):
-    def match(self, gt, predictions):
+    def score(self, gt, predictions):
         return match_metric(gt, predictions).ap
 
     def test_vcsl_fig4f(self):
         self.assertAlmostEqual(0.0, self.vcsl_fig4f())
 
     def test_multiple_pairs(self):
-        gt = [Match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
+        gt = [match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
         detections = [
-            Match(4, 14, 10, 18, score=3.0, query_id="Q2", ref_id="R2"),
-            Match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
-            Match(4, 14, 10, 18, score=1.0, query_id="Q1", ref_id="R2"),
+            match(4, 14, 10, 18, score=3.0, query_id="Q2", ref_id="R2"),
+            match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
+            match(4, 14, 10, 18, score=1.0, query_id="Q1", ref_id="R2"),
         ]
-        metric = self.match(gt, detections)
+        metric = self.score(gt, detections)
         # AP ~= 1/3, since precision is 1/3 by the time the lowest-score
         # correct pair prediction is seen.
         self.assertAlmostEqual(metric, 1 / 3.0)
@@ -111,21 +133,21 @@ class MatchMetricTest(MatchMetricTestBase, unittest.TestCase):
         Asserts that the order of the results does not affect the
         metric calculation.
         """
-        gt = [Match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
+        gt = [match(4, 14, 10, 18, query_id="Q1", ref_id="R2")]
         detections = [
-            Match(4, 10, 10, 14, score=3.0, query_id="Q1", ref_id="R2"),
-            Match(4, 10, 10, 14, score=3.0, query_id="Q2", ref_id="R1"),
-            Match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
-            Match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R2"),
-            Match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R1"),
-            Match(10, 14, 14, 18, score=1.0, query_id="Q1", ref_id="R2"),
+            match(4, 10, 10, 14, score=3.0, query_id="Q1", ref_id="R2"),
+            match(4, 10, 10, 14, score=3.0, query_id="Q2", ref_id="R1"),
+            match(4, 14, 10, 18, score=2.0, query_id="Q1", ref_id="R1"),
+            match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R2"),
+            match(4, 14, 10, 18, score=1.0, query_id="Q2", ref_id="R1"),
+            match(10, 14, 14, 18, score=1.0, query_id="Q1", ref_id="R2"),
         ]
 
         # Predictions with different ordering for to the metric calculation.
         metrics = []
         for _ in range(10):
             np.random.shuffle(detections)
-            metrics.append(self.match(gt, detections))
+            metrics.append(self.score(gt, detections))
 
         # All metric scores must be the same
         for i in range(10):
@@ -153,11 +175,11 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
                 return metrics.segment_ap.ap
 
     def test_multiple_pairs(self):
-        gt = [Match(4, 14, 10, 18, query_id=1, ref_id=2)]
+        gt = [match(4, 14, 10, 18, query_id=1, ref_id=2)]
         detections = [
-            Match(4, 14, 10, 18, score=3.0, query_id=2, ref_id=2),
-            Match(4, 14, 10, 18, score=2.0, query_id=1, ref_id=1),
-            Match(4, 14, 10, 18, score=1.0, query_id=1, ref_id=2),
+            match(4, 14, 10, 18, score=3.0, query_id=2, ref_id=2),
+            match(4, 14, 10, 18, score=2.0, query_id=1, ref_id=1),
+            match(4, 14, 10, 18, score=1.0, query_id=1, ref_id=2),
         ]
         metric = self.run_test(gt, detections)
         self.assertAlmostEqual(metric, 1 / 3.0)
@@ -165,7 +187,7 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
     def test_multiple_pairs_inline(self):
         # Score column not specified (not needed for GT)
         gt = """query_start,query_end,ref_start,ref_end,query_id,ref_id
-4,14,10,18,Q1,R2
+4,14,10,18,Q000001,R000002
 """
         # Columns in a different order
         predictions = """query_id,ref_id,query_start,query_end,ref_start,ref_end,score
@@ -177,12 +199,18 @@ class EvaluateMatchingTrackTest(unittest.TestCase):
         self.assertAlmostEqual(metric, 1 / 3.0)
 
 
-class EvaluateDescriptorTrackTest(unittest.TestCase):
+def make_candidate(query_id, ref_id, score):
+    query_id = format_video_id(query_id, Dataset.QUERIES)
+    ref_id = format_video_id(ref_id, Dataset.REFS)
+    return CandidatePair(query_id, ref_id, score)
+
+
+class DescriptorTrackTest(unittest.TestCase):
     def ap(self, gt, predictions):
         return average_precision(gt, predictions).ap
 
     def test_uap(self):
-        C = CandidatePair
+        C = make_candidate
         gt = [C(1, 10, 1.0), C(2, 11, 1.0)]
         self.assertEqual(
             1.0, self.ap(gt, [C(1, 10, 8.0), C(2, 11, 4.0), C(99, 99, 2.0)])
@@ -201,7 +229,7 @@ class EvaluateDescriptorTrackTest(unittest.TestCase):
         )
 
     def test_csv_serialization(self):
-        C = CandidatePair
+        C = make_candidate
         candidates = [C(1, 10, 1.0), C(2, 11, 2.0)]
         with io.StringIO() as buf:
             CandidatePair.write_csv(candidates, buf)
@@ -213,8 +241,8 @@ class EvaluateDescriptorTrackTest(unittest.TestCase):
 class MatchTest(unittest.TestCase):
     def test_serialization(self):
         matches = [
-            Match(4, 8, 10, 14, score=1.0, query_id=10, ref_id=100),
-            Match(8, 14, 14, 18, score=2.0, query_id=11, ref_id=101),
+            match(4, 8, 10, 14, score=1.0, query_id="Q123456", ref_id="R000100"),
+            match(8, 14, 14, 18, score=2.0, query_id="Q000011", ref_id="R000101"),
         ]
         with io.StringIO() as buf:
             Match.write_csv(matches, buf)

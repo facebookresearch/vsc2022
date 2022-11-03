@@ -1,7 +1,7 @@
 import collections
 import logging
 from dataclasses import dataclass
-from typing import Iterable, List, NamedTuple, Tuple, Union
+from typing import Iterable, List, NamedTuple, Tuple
 
 import faiss  # @manual
 import numpy as np
@@ -12,7 +12,7 @@ SearchIndices = Tuple[int, int, float]
 
 @dataclass
 class VideoMetadata:
-    video_id: Union[str, int]  # either 12345 or "Q12345"
+    video_id: str
     timestamps: np.ndarray  # either Nx2 (start and end timestamps) or N
 
     def __len__(self):
@@ -49,8 +49,8 @@ class PairMatch(NamedTuple):
 
 @dataclass
 class PairMatches:
-    query_id: int
-    ref_id: int
+    query_id: str
+    ref_id: str
     matches: List[PairMatch]
 
     def records(self):
