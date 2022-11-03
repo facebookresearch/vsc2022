@@ -4,17 +4,7 @@ import enum
 import itertools
 from collections import defaultdict
 from math import sqrt
-from typing import (
-    Collection,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    TextIO,
-    Tuple,
-    Union,
-)
+from typing import Collection, Dict, List, NamedTuple, Optional, TextIO, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,14 +17,19 @@ class Dataset(enum.Enum):
 
 
 def format_video_id(video_id: Union[str, int], dataset: Optional[Dataset]) -> str:
-    if isinstance(video_id, int):
+    if isinstance(video_id, (int, np.integer)):
         if dataset is None:
             raise ValueError(
                 "Unable to convert integer video_id without a Dataset enum"
             )
         return f"{dataset.value}{video_id:06d}"
-    elif dataset is not None:
-        assert video_id[0] == dataset.value, f"dataset mismatch? got {video_id} for dataset {dataset}"
+    assert isinstance(
+        video_id, str
+    ), f"unexpected video_id: {video_id} of type {type(video_id)}"
+    if dataset is not None:
+        assert (
+            video_id[0] == dataset.value
+        ), f"dataset mismatch? got {video_id} for dataset {dataset}"
     return video_id
 
 

@@ -189,7 +189,7 @@ def main(args):
         queries, refs = score_normalize(
             queries,
             refs,
-            load_features(args.score_norm_features),
+            load_features(args.score_norm_features, Dataset.REFS),
             beta=1.2,
         )
         score_normalization = True
