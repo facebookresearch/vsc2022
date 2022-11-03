@@ -72,7 +72,7 @@ training dataset, so do inference on that dataset too.
 
 ```
 python -m vsc.baseline.inference \
-    --accelerator gpu --processes 2 \
+    --accelerator cuda --processes 2 \
     --torchscript_path ./sscd_disc_mixup.no_l2_norm.torchscript.pt \
     --output_file ./output/validation_refs.npz \
     --dataset_path ./validation_dataset/refs
