@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.metrics import average_precision, AveragePrecision, CandidatePair, Match
@@ -14,16 +14,15 @@ AGGREGATED_CANDIDATES_PER_QUERY = 25
 
 
 def evaluate_descriptor_track(
-    query_feature_filename: str, ref_feature_filename: str, ground_truth_filename: str
+    query_feature_filename: str,
+    ref_feature_filename: str,
+    ground_truth_filename: Optional[str],
 ) -> Tuple[AveragePrecision, List[CandidatePair]]:
     logger.info("Starting Descriptor level eval")
     query_features = load_features(query_feature_filename, expected_prefix="Q")
     logger.info(f"Loaded {len(query_features)} query features")
     ref_features = load_features(ref_feature_filename, expected_prefix="R")
     logger.info(f"Loaded {len(ref_features)} ref features")
-    gt_matches = Match.read_csv(ground_truth_filename, is_gt=True)
-    gt_pairs = CandidatePair.from_matches(gt_matches)
-    logger.info(f"Loaded ground truth from {ground_truth_filename}")
 
     # TODO: require a fixed number of input videos per track.
     # TODO: emit threshold that the search uses
@@ -40,7 +39,13 @@ def evaluate_descriptor_track(
     else:
         score_candidates = candidates
 
+    if ground_truth_filename is None:
+        return None, score_candidates
+
+    gt_matches = Match.read_csv(ground_truth_filename, is_gt=True)
+    gt_pairs = CandidatePair.from_matches(gt_matches)
+    logger.info(f"Loaded ground truth from {ground_truth_filename}")
     ap = average_precision(gt_pairs, score_candidates)
     logger.info(f"Descriptor track micro-AP (uAP): {ap.ap:.4f}")
 
-    return ap, candidates
+    return ap, score_candidates
