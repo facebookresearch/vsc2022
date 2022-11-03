@@ -333,7 +333,7 @@ def match_metric(
         video_pairs[gt.pair_id()].add_gt(gt)
 
     # Get the total gt length for each axis
-    gt_total_lengths = {axis: 0 for axis in Axis}
+    gt_total_lengths = {axis: 0.0 for axis in Axis}
     for _, v in video_pairs.items():
         for axis in Axis:
             gt_total_lengths[axis] += v.total_gt_length(axis)

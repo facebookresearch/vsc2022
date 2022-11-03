@@ -123,7 +123,7 @@ class MatchMetricTest(MatchMetricTestBase, unittest.TestCase):
 
         # Predictions with different ordering for to the metric calculation.
         metrics = []
-        for i in range(10):
+        for _ in range(10):
             np.random.shuffle(detections)
             metrics.append(self.match(gt, detections))
 
