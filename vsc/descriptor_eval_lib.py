@@ -25,8 +25,6 @@ def evaluate_descriptor_track(
     gt_pairs = CandidatePair.from_matches(gt_matches)
     logger.info(f"Loaded ground truth from {ground_truth_filename}")
 
-    # TODO: require a fixed number of input videos per track.
-    # TODO: emit threshold that the search uses
     retrieval_candidates = int(RETRIEVAL_CANDIDATES_PER_QUERY * len(query_features))
     num_candidates = int(AGGREGATED_CANDIDATES_PER_QUERY * len(query_features))
 
