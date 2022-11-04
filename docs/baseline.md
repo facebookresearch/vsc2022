@@ -40,20 +40,20 @@ Run inference on queries and references for the training dataset.
 
 ```
 python -m vsc.baseline.inference \
-    --accelerator gpu --processes 2 \
+    --accelerator cuda --processes 2 \
     --torchscript_path ./sscd_disc_mixup.no_l2_norm.torchscript.pt \
     --output_file ./output/training_queries.npz \
     --dataset_path ./training_dataset/queries
 ```
 ```
 python -m vsc.baseline.inference \
-    --accelerator gpu --processes 2 \
+    --accelerator cuda --processes 2 \
     --torchscript_path ./sscd_disc_mixup.no_l2_norm.torchscript.pt \
     --output_file ./output/training_refs.npz \
     --dataset_path ./training_dataset/refs
 ```
 
-For GPU inference, set `--accelerator gpu` and set `--processes` to
+For GPU inference, set `--accelerator cuda` and set `--processes` to
 the number of GPUs on the system.
 
 For CPU inference, set `--accelerator cpu` and set `--processes` to
@@ -72,7 +72,7 @@ training dataset, so do inference on that dataset too.
 
 ```
 python -m vsc.baseline.inference \
-    --accelerator gpu --processes 2 \
+    --accelerator cuda --processes 2 \
     --torchscript_path ./sscd_disc_mixup.no_l2_norm.torchscript.pt \
     --output_file ./output/validation_refs.npz \
     --dataset_path ./validation_dataset/refs
