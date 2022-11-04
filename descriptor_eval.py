@@ -26,9 +26,7 @@ parser.add_argument(
     help="Path to write candidates (optional)",
     type=str,
 )
-parser.add_argument(
-    "--ground_truth", help="Path containing Groundtruth", type=str, required=True
-)
+parser.add_argument("--ground_truth", help="Path containing Groundtruth", type=str)
 
 
 logging.basicConfig(
