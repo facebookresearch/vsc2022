@@ -2,7 +2,13 @@ import logging
 from typing import List, Tuple
 
 from vsc.candidates import CandidateGeneration, MaxScoreAggregation
-from vsc.metrics import average_precision, AveragePrecision, CandidatePair, Dataset, Match
+from vsc.metrics import (
+    average_precision,
+    AveragePrecision,
+    CandidatePair,
+    Dataset,
+    Match,
+)
 from vsc.storage import load_features
 
 logger = logging.getLogger("descriptor_eval_lib.py")
