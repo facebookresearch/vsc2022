@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from sklearn.metrics import average_precision_score
+
 
 class Dataset(enum.Enum):
     QUERIES = "Q"
@@ -40,10 +42,11 @@ class CandidatePair:
     score: float
 
     @classmethod
-    def write_csv(
-        cls, candidates: Collection["CandidatePair"], file: Union[str, TextIO]
-    ):
-        df = pd.DataFrame(
+    def to_dataframe(
+        cls,
+        candidates: Collection["CandidatePair"],
+    ) -> pd.DataFrame:
+        return pd.DataFrame(
             [
                 {
                     "query_id": format_video_id(c.query_id, Dataset.QUERIES),
@@ -53,6 +56,12 @@ class CandidatePair:
                 for c in candidates
             ],
         )
+
+    @classmethod
+    def write_csv(
+        cls, candidates: Collection["CandidatePair"], file: Union[str, TextIO]
+    ):
+        df = cls.to_dataframe(candidates)
         df.to_csv(file, index=False)
 
     @classmethod
@@ -100,6 +109,7 @@ class PrecisionRecallCurve:
 class AveragePrecision:
     ap: float
     pr_curve: PrecisionRecallCurve
+    simple_ap: Optional[float] = None
 
 
 class Intervals:
@@ -440,6 +450,12 @@ def average_precision(
     if len(predicted_pairs) != len(predictions):
         raise AssertionError("Duplicates detected in predictions")
 
+    # AP calculation that aligns with DrivenData's backend implementation.
+    canonical_ap = drivendata_average_precision(
+        predicted=CandidatePair.to_dataframe(predictions),
+        ground_truth=CandidatePair.to_dataframe(ground_truth),
+    )
+
     predictions = sorted(predictions, key=lambda x: x.score, reverse=True)
     scores = np.array([pair.score for pair in predictions])
     correct = np.array(
@@ -451,8 +467,48 @@ def average_precision(
     cumulative_predicted = np.arange(len(correct)) + 1
     recall = cumulative_correct / total_pairs
     precision = cumulative_correct / cumulative_predicted
-    ap = np.sum(precision * correct) / total_pairs
+    # Simple AP computation.
+    simple_ap = np.sum(precision * correct) / total_pairs
     # Get precision and recall where correct is true
     indices = np.nonzero(correct)[0]
     curve = PrecisionRecallCurve(precision[indices], recall[indices], scores[indices])
-    return AveragePrecision(ap, curve)
+    return AveragePrecision(ap=canonical_ap, pr_curve=curve, simple_ap=simple_ap)
+
+
+def drivendata_average_precision(
+    predicted: pd.DataFrame,
+    ground_truth: pd.DataFrame,
+):
+    """Canonical AP implementation used for the challenge."""
+    SCORE_COL = "score"
+    QUERY_ID_COL = "query_id"
+    DATABASE_ID_COL = "ref_id"
+    actual = ground_truth[["query_id", "ref_id"]]
+    if (
+        not np.isfinite(predicted[SCORE_COL]).all()
+        or np.isnan(predicted[SCORE_COL]).any()
+    ):
+        raise ValueError("Scores must be finite.")
+
+    predicted = predicted.sort_values(SCORE_COL, ascending=False)
+
+    merged = predicted.merge(
+        right=actual.assign(actual=1.0),
+        how="left",
+        on=[QUERY_ID_COL, DATABASE_ID_COL],
+    ).fillna({"actual": 0.0})
+
+    # We may not predict for every ground truth, so calculate unadjusted AP then adjust it
+    unadjusted_ap = (
+        average_precision_score(merged["actual"].values, merged[SCORE_COL].values)
+        if merged["actual"].sum()
+        else 0.0
+    )
+    # Rescale average precisions based on total ground truth positive counts
+    predicted_n_pos = int(merged["actual"].sum())
+
+    # avoid rows added to validate query ids, will have blank ref_id
+    actual_n_pos = int(actual[DATABASE_ID_COL].notna().sum())
+
+    adjusted_ap = unadjusted_ap * (predicted_n_pos / actual_n_pos)
+    return adjusted_ap

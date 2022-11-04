@@ -207,7 +207,9 @@ def make_candidate(query_id, ref_id, score):
 
 class DescriptorTrackTest(unittest.TestCase):
     def ap(self, gt, predictions):
-        return average_precision(gt, predictions).ap
+        metrics = average_precision(gt, predictions)
+        self.assertAlmostEqual(metrics.ap, metrics.simple_ap)
+        return metrics.ap
 
     def test_uap(self):
         C = make_candidate
