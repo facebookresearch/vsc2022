@@ -295,39 +295,10 @@ class VideoPair:
 
         return intersect_deltas, total_deltas
 
-    def visualize(self, max_len=30, scale=10, boundary=3):
-        """A naive visualization scheme."""
-        mask = np.ones(
-            (max_len * scale + boundary + 1, max_len * scale + boundary + 1, 3)
-        )
-        for gt in self.gts:
-            qs, qe = gt.query_start * scale, gt.query_end * scale
-            rs, re = gt.ref_start * scale, gt.ref_end * scale
-
-            slop = float(qe - qs) / float(re - rs + 1e-7)
-            for y in np.arange(qs, qe + boundary, 0.1):
-                x = round((y - qs) / slop + rs)
-                mask[int(y), int(x), :] = 0.0
-
-            mask[qs : qe + boundary + 1, rs] = [1.0, 0.0, 0.0]
-            mask[qs, rs : re + boundary + 1] = [1.0, 0.0, 0.0]
-            mask[qs : qe + boundary + 1, re + boundary] = [1.0, 0.0, 0.0]
-            mask[qe + boundary, rs : re + boundary + 1] = [1.0, 0.0, 0.0]
-        for pr in self.preds:
-            qs, qe = pr.query_start * scale, pr.query_end * scale
-            rs, re = pr.ref_start * scale, pr.ref_end * scale
-
-            mask[qs : qe + boundary + 1, rs] = [0.0, 0.0, 1.0]
-            mask[qs, rs : re + boundary + 1] = [0.0, 0.0, 1.0]
-            mask[qs : qe + boundary + 1, re + boundary] = [0.0, 0.0, 1.0]
-            mask[qe + boundary, rs : re + boundary + 1] = [0.0, 0.0, 1.0]
-
-        plt.imshow(mask)
-        plt.show()
-
 
 def match_metric(
-    gts: Collection[Match], predictions: Collection[Match], visualize: bool = False
+    gts: Collection[Match],
+    predictions: Collection[Match],
 ) -> AveragePrecision:
     """Matching track metric:
 
@@ -394,9 +365,6 @@ def match_metric(
             pr_precisions.append(precision)
             pr_scores.append(score)
 
-    if visualize:
-        for _, v in video_pairs.items():
-            v.visualize()
     curve = PrecisionRecallCurve(
         np.array(pr_precisions), np.array(pr_recalls), np.array(pr_scores)
     )
