@@ -344,13 +344,13 @@ def match_metric(
             intersection_deltas, total_deltas = video_pairs[
                 prediction.pair_id()
             ].add_prediction(prediction)
-            recalls = {}
-            precisions = {}
             for axis in Axis:
                 # Accumulate the differences to the corresponding values
                 intersections[axis] += intersection_deltas[axis]
                 totals[axis] += total_deltas[axis]
 
+        recalls = {}
+        precisions = {}
         for axis in Axis:
             recalls[axis] = intersections[axis] / gt_total_lengths[axis]
             precisions[axis] = intersections[axis] / totals[axis]
