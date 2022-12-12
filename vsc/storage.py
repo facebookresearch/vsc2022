@@ -39,7 +39,7 @@ def same_value_ranges(values):
     yield value, start, len(values)
 
 
-def load_features(f, dataset: Optional[Dataset] = None):
+def load_features(f, dataset: Optional[Dataset] = None, as_dict: bool = False):
     data = np.load(f, allow_pickle=False)
     video_ids = data["video_ids"]
     feats = data["features"]
@@ -56,14 +56,16 @@ def load_features(f, dataset: Optional[Dataset] = None):
         print(f"timestamps.shape[1:] == [2]: {timestamps.shape[1:] == [2]}")
         raise ValueError(f"Unexpected timestamp shape. Got {timestamps.shape}")
 
-    results = []
+    results = dict() if as_dict else []
     for video_id, start, end in same_value_ranges(video_ids):
         video_id = format_video_id(video_id, dataset)
-        results.append(
-            VideoFeature(
-                video_id=video_id,
-                timestamps=timestamps[start:end],
-                feature=feats[start:end, :],
-            )
+        item = VideoFeature(
+            video_id=video_id,
+            timestamps=timestamps[start:end],
+            feature=feats[start:end, :],
         )
+        if as_dict:
+            results[video_id] = item
+        else:
+            results.append(item)
     return results
