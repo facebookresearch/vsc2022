@@ -37,6 +37,16 @@ $ ./matching_eval.py --predictions vsc_eval_data/matches.csv --ground_truth vsc_
 Matching track segment AP: 0.3650
 ```
 
+## Baseline results on training set
+
+| method                        | score norm         | Descriptor μAP | Matching μAP |
+|-------------------------------|--------------------|----------------|--------------|
+| [SSDC](docs/baseline.md)      | :x:                | 0.4754         | 0.3650       |
+| [SSDC](docs/baseline.md)      | :heavy_check_mark: | 0.6499         | 0.4692       |
+| [DINO](docs/baseline_dino.md) | :heavy_check_mark: | 0.4784         | 0.3653       |
+| [DnS](docs/baseline_dns.md)   | :heavy_check_mark: | 0.4129         | 0.3211       |
+
+
 ## License
 
 The VSC codebase is released under the [MIT license](LICENSE).
