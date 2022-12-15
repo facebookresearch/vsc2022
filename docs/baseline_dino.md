@@ -3,7 +3,7 @@ The baseline can also be implemented with [DINO](https://arxiv.org/abs/2104.1429
 features, using the pretrained ViT-S/16 provided in the official [repo](https://github.com/facebookresearch/dino) 
 that has similar computational requirements to a ResNet50, so as to meet the limitation of the challenge.
 
-This baseline produces global frame descriptors with 1536 dimensions and builds on the same process as the previous
+This baseline produces global frame descriptors with 768 dimensions and builds on the same process as the previous
 [SSCD baseline](baseline.md) for video retrieval and localization.
 
 Note that due to the large dimensionality of the generated descriptors, this baseline would not be eligible
