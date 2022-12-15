@@ -45,7 +45,7 @@ class DnSResNet50(nn.Module):
 
 
 class DINO(nn.Module):
-    def __init__(self, backbone="dino_vitb8", pooling_param=4.0):
+    def __init__(self, backbone="dino_vits16", pooling_param=4.0):
         super().__init__()
         self.backbone = torch.hub.load(
             "facebookresearch/dino:main",
@@ -57,6 +57,7 @@ class DINO(nn.Module):
         cls_token = x[:, 0]
         x = x[:, 1:]
 
+        x = rearrange(x, "b r c -> b c r")
         x = F.lp_pool1d(x.clamp(min=1e-6), self.pooling_param, x.size(2))
         x = rearrange(x, "b c r -> b (c r)")
 

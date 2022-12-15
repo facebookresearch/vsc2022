@@ -1,6 +1,7 @@
 # DINO baseline
-The baseline can be also implemented with [DINO](https://arxiv.org/abs/2104.14294)
-features, using the pretrained ViT-B/8 provided in the official [repo](https://github.com/facebookresearch/dino).
+The baseline can also be implemented with [DINO](https://arxiv.org/abs/2104.14294)
+features, using the pretrained ViT-S/16 provided in the official [repo](https://github.com/facebookresearch/dino) 
+that has similar computational requirements to a ResNet50, so as to meet the limitation of the challenge.
 
 This baseline produces global frame descriptors with 1536 dimensions and builds on the same process as the previous
 [SSCD baseline](baseline.md) for video retrieval and localization.
@@ -18,9 +19,12 @@ second (1 fps).
 
 ### Training dataset
 Run inference on queries and references for the training dataset providing `dino` to the `--baseline` argument.
+Also, select the `RESIZE_224_SQUARE` for the `--transforms` to use the appropriate preprocessing for this approach. 
+
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/training_queries_dino.npz \
     --dataset_path ./training_dataset/queries
@@ -28,6 +32,7 @@ python -m vsc.baseline.inference \
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/training_refs_dino.npz \
     --dataset_path ./training_dataset/refs
@@ -52,6 +57,7 @@ Run inference on references of the validation dataset to generate the "noise" da
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/validation_refs_dino.npz \
     --dataset_path ./validation_dataset/refs
@@ -96,6 +102,6 @@ python -m vsc.baseline.sscd_baseline \
     --output_path ./output/dino_score_norm
 
 ...
-2022-12-07 19:10:59 INFO     Candidate uAP: 0.4784
-2022-12-07 19:11:00 INFO     Matching track metric: 0.3653
+2022-12-07 19:10:59 INFO     Candidate uAP: 0.4402
+2022-12-07 19:11:00 INFO     Matching track metric: 0.3393
 ```
