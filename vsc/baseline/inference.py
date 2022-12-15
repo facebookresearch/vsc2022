@@ -30,6 +30,10 @@ class InferenceTransforms(enum.Enum):
     RESIZE_288 = enum.auto()
     # Resize the short edge to 320, then take the center crop
     RESIZE_320_CENTER = enum.auto()
+    # Aspect-ratio preserving resize to 224, then take the center crop
+    RESIZE_224_CENTER = enum.auto()
+    # Aspect-ratio preserving resize to 224x224
+    RESIZE_224_SQUARE = enum.auto()
 
 
 class Accelerator(enum.Enum):
@@ -41,9 +45,18 @@ class VideoReaderType(enum.Enum):
     FFMPEG = enum.auto()
 
 
+class Baseline(enum.Enum):
+    SSCD = enum.auto()
+    DNS = enum.auto()
+    DINO = enum.auto()
+
+
 parser = argparse.ArgumentParser()
 inference_parser = parser.add_argument_group("Inference")
-inference_parser.add_argument("--torchscript_path", required=True)
+inference_parser.add_argument(
+    "--baseline", default="sscd", choices=[x.name.lower() for x in Baseline]
+)
+inference_parser.add_argument("--torchscript_path", default=None)
 inference_parser.add_argument("--batch_size", type=int, default=32)
 inference_parser.add_argument("--distributed_rank", type=int, default=0)
 inference_parser.add_argument("--distributed_size", type=int, default=1)
@@ -58,6 +71,7 @@ inference_parser.add_argument(
 )
 inference_parser.add_argument("--output_file", required=True)
 inference_parser.add_argument("--scratch_path", required=False)
+inference_parser.add_argument("--store_fp16", action="store_true")
 
 dataset_parser = parser.add_argument_group("Dataset")
 dataset_parser.add_argument("--dataset_path", required=True)
@@ -80,6 +94,11 @@ logger.setLevel(logging.INFO)
 
 def main(args):
     success = False
+    if args.baseline == "sscd" and args.torchscript_path is None:
+        raise Exception(
+            'Set either --torchscript_path when "sscd" is selected in'
+            "--baseline argument"
+        )
     if args.processes > 1 and args.distributed_size > 1:
         raise Exception(
             "Set either --processes (single-machine distributed) or "
