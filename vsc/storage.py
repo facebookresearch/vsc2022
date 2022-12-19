@@ -14,7 +14,7 @@ def store_features(f, features: List[VideoFeature], dataset: Optional[Dataset] =
     video_ids = []
     feats = []
     timestamps = []
-    for feature in features:
+    for feature in sorted(features, key=lambda x: x.video_id):
         video_id = format_video_id(feature.video_id, dataset)
         video_ids.append(np.full(len(feature), video_id))
         feats.append(feature.feature)
@@ -22,7 +22,13 @@ def store_features(f, features: List[VideoFeature], dataset: Optional[Dataset] =
     video_ids = np.concatenate(video_ids)
     feats = np.concatenate(feats)
     timestamps = np.concatenate(timestamps)
-    np.savez(f, video_ids=video_ids, features=feats, timestamps=timestamps)
+    np.savez(
+        f,
+        video_ids=video_ids,
+        features=feats,
+        timestamps=timestamps,
+        allow_pickle=False,
+    )
 
 
 def same_value_ranges(values):
@@ -45,6 +51,13 @@ def load_features(f, dataset: Optional[Dataset] = None):
     feats = data["features"]
     timestamps = data["timestamps"]
 
+    # Reorder to make videos consecutive
+    if not np.all(video_ids[1:] >= video_ids[:-1]):
+        order = np.argsort(video_ids)
+        video_ids = video_ids[order]
+        feats = feats[order]
+        timestamps = timestamps[order]
+
     ts_dims = len(timestamps.shape)
     if timestamps.shape[0] != feats.shape[0]:
         raise ValueError(
@@ -59,11 +72,18 @@ def load_features(f, dataset: Optional[Dataset] = None):
     results = []
     for video_id, start, end in same_value_ranges(video_ids):
         video_id = format_video_id(video_id, dataset)
+        video_timestamps = timestamps[start:end]
+        video_feature = feats[start:end]
+        if len(video_timestamps.shape) == 1:
+            start_times = video_timestamps
+        else:
+            start_times = video_timestamps[:, 0]
+        video_order = np.argsort(start_times)
         results.append(
             VideoFeature(
                 video_id=video_id,
-                timestamps=timestamps[start:end],
-                feature=feats[start:end, :],
+                timestamps=video_timestamps[video_order],
+                feature=video_feature[video_order],
             )
         )
     return results
