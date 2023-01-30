@@ -21,6 +21,12 @@ Also, due to its poor performance when no normalization is applied, it is benchm
 of score normalization.
 
 
+## Download the DINO model
+
+We provide a torchscript version of the feature extraction and all the student models used in our experiments. They can be found:
+[feature extractor](https://mever.iti.gr/vsc2022/resnet50_l3imac.torchscript.pt), [coarse-grained student](https://mever.iti.gr/vsc2022/cg_student.torchscript.pt), 
+[fine-grained attention student](https://mever.iti.gr/vsc2022/fg_att_student.torchscript.pt), [fine-grained binarization student](https://mever.iti.gr/vsc2022/fg_bin_student.torchscript.pt).
+
 ## Inference
 
 Similar to the previous approaches, we use the inference script to extract descriptors at one frame per
@@ -30,12 +36,13 @@ This extracts ResNet50 features that will be used later to generate coarse and f
 
 ### Training dataset
 
-Run inference on queries and references for the training dataset providing `dns` to the `--baseline` argument.
+Run inference on queries and references for the training dataset providing `dns` to the `--baseline` argument. 
 Also, select the `RESIZE_224_SQUARE` for the `--transforms` to use the appropriate preprocessing for this approach. 
 
 ```
 python -m vsc.baseline.inference \
     --baseline dns \
+    --torchscript_path ./resnet50_l3imac.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --store_fp16 --batch_size 128 \
     --accelerator cuda --processes 2 \
@@ -46,33 +53,25 @@ python -m vsc.baseline.inference \
 ```
 python -m vsc.baseline.inference \
     --baseline dns \
+    --torchscript_path ./resnet50_l3imac.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --store_fp16 --batch_size 128 \
     --accelerator cuda --processes 2 \
     --output_file ./output/training_refs_dns.npz \
     --dataset_path ./training_dataset/refs
 ```
-For GPU inference, set `--accelerator cuda` and set `--processes` to
-the number of GPUs on the system.
-
-For CPU inference, set `--accelerator cpu` and set `--processes` to
-the desired number of inference processes.
-
-Multiple machine distributed inference is not tested here,
-but should be possible with a bit of work.
 
 ### Validation references
 Since this baseline is used only with score normalization baseline, we'll use the
 validation references as the "noise" dataset when evaluating on the
-training dataset, so do inference on that dataset too.
-(For validation predictions, we'll use the training references as the
-"noise" predictions.)
+training dataset.
 
 Run inference on references of the validation dataset to generate the "noise" dataset.
 
 ```
 python -m vsc.baseline.inference \
     --baseline dns \
+    --torchscript_path ./resnet50_l3imac.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --store_fp16 --batch_size 128 \
     --accelerator cuda --processes 2 \
@@ -97,7 +96,8 @@ Run indexing with the coarse-grained student, providing also the "noise" dataset
 
 ```
 python -m vsc.baseline.dns_index \
-    --student coarse --accelerator cuda \
+    --torchscript_path ./cg_student.torchscript.pt \
+    --accelerator cuda \
     --query_features ./output/training_queries_dns.npz \
     --ref_features ./output/training_refs_dns.npz \
     --score_norm_features ./output/validation_refs_dns.npz \
@@ -106,13 +106,14 @@ python -m vsc.baseline.dns_index \
 
 ### Fine representations with the fine-grained students
 
-Run indexing with a fine-grained student. Pass either `fine_att` or `fine_bin` for the `--student` argument
-to either use the fine-grained attention or binarization student, respectively
+Run indexing with a fine-grained student. Provide the corresponding torchscript model to the
+`--torchscript_path` argument to either use the fine-grained attention or binarization student
 (refer to the [paper](https://arxiv.org/abs/2106.13266) for more details). 
 
 ```
 python -m vsc.baseline.dns_index \
-    --student fine_att --accelerator cuda \
+    --torchscript_path ./fg_att_student.torchscript.pt \
+    --accelerator cuda \
     --query_features ./output/training_queries_dns.npz \
     --ref_features ./output/training_refs_dns.npz \
     --output_path ./output/dns
@@ -121,33 +122,19 @@ python -m vsc.baseline.dns_index \
 ## Matching
 
 The `dns_baseline.py` script performs all phases of matching: retrieval, localization, 
-and assigning scores to localized matches.
+and assigning scores to localized matches. Similar to the other baselines, it relies on the 
+[FAISS](https://github.com/facebookresearch/faiss) and [VCSL](https://github.com/alipay/VCSL) 
+libraries for retrieval and localization, respectively.
 
-Retrieval uses the coarse video representations with score normalization to generate candidate pairs 
-for the localization process. Again, the [FAISS](https://github.com/facebookresearch/faiss) library 
-is used with GPU acceleration if supported.
-
-Localization uses the fine video representations to generate similarity matrices between videos of the candidate pairs,
-combined with ones generated with the coarse video representations.
-Then, the temporal network flow (TN) method from the [VCSL](https://github.com/alipay/VCSL) library is used for
-the final localization of the copied segments.
-
-The baseline script also runs a matching track evaluation, and a descriptor micro AP.
-The descriptor micro AP estimates the descriptor track score, but
-does not enforce the same limits as the `descriptor_eval.py` evaluation.
-
-The matching script provides several outputs in the `--output_path`
-directory, including precision-recall plots, and both retrieved candidate pairs
-and localized matches in `.csv` formats.
-
-Run the matching script with one of the two fine-grained students. Pass either `fine_att` or `fine_bin` for 
-the `--student` argument providing the corresponding feature file for query and reference videos. 
+Run the matching script with one of the two fine-grained students. Provide the torchscript model to the
+`--torchscript_path` argument and the corresponding feature files for query and reference videos. 
 
 ### Fine-grained Attention Student
 
 ```
 python -m vsc.baseline.dns_baseline \
-    --student fine_att --accelerator cuda \
+    --torchscript_path ./fg_att_student.torchscript.pt \
+    --accelerator cuda \
     --query_fine_features ./output/dns/queries_fg_att_student.npz \
     --ref_fine_features ./output/dns/refs_fg_att_student.npz \
     --query_coarse_features ./output/dns/queries_cg_student_sn.npz \
@@ -164,7 +151,8 @@ python -m vsc.baseline.dns_baseline \
 
 ```
 python -m vsc.baseline.dns_baseline \
-    --student fine_bin --accelerator cuda \
+    --torchscript_path ./fg_bin_student.torchscript.pt \
+    --accelerator cuda \
     --query_fine_features ./output/dns/queries_fg_bin_student.npz \
     --ref_fine_features ./output/dns/refs_fg_bin_student.npz \
     --query_coarse_features ./output/dns/queries_cg_student_sn.npz \
