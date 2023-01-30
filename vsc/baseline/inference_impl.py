@@ -22,7 +22,6 @@ from vsc.baseline.inference import (
     VideoReaderType,
     Baseline,
 )
-from vsc.baseline.dns.feature_extractor import DnSResNet50, DINO
 from vsc.baseline.video_reader.ffmpeg_video_reader import FFMpegVideoReader
 from vsc.index import VideoFeature
 from vsc.storage import load_features, store_features
@@ -35,16 +34,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("inference_impl.py")
 logger.setLevel(logging.INFO)
-
-
-def build_feature_extractor(baseline: Baseline, torchscript_path: str):
-    network = {
-        Baseline.SSCD: torch.jit.load,
-        Baseline.DNS: DnSResNet50,
-        Baseline.DINO: DINO,
-    }[baseline]
-
-    return network(torchscript_path) if torchscript_path is not None else network()
 
 
 def build_transforms(transform: InferenceTransforms):
@@ -181,9 +170,7 @@ def worker_process(args, rank, world_size, output_filename):
     logger.info(f"Starting worker {rank} of {world_size}.")
     device = get_device(args, rank, world_size)
     logger.info("Loading model")
-    model = build_feature_extractor(
-        Baseline[args.baseline.upper()], args.torchscript_path
-    )
+    model = torch.jit.load(args.torchscript_path)
     model.eval()
     logger.info("Setting up dataset")
     transforms = build_transforms(InferenceTransforms[args.transforms])

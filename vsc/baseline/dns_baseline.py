@@ -17,21 +17,16 @@ calling the inference script on each dataset with the adapted SSCD model.
 
 Finally, run this script to perform retrieval and matching.
 """
-import dataclasses
 import argparse
 import logging
-import enum
 import os
-from typing import List, Tuple
+import numpy as np
+from typing import List, Dict, Tuple
 
 import torch
 
 import matplotlib.pyplot as plt
-from vsc.baseline.localization import (
-    VCSLLocalizationDnS,
-    VCSLLocalizationMaxSim,
-    VCSLLocalizationCandidateScore,
-)
+from vsc.baseline.localization import VCSLLocalizationMaxSim
 from vsc.candidates import CandidateGeneration, MaxScoreAggregation
 from vsc.index import VideoFeature
 from vsc.metrics import (
@@ -42,8 +37,8 @@ from vsc.metrics import (
     evaluate_matching_track,
     Match,
 )
-from vsc.storage import load_features, store_features
-from vsc.baseline.dns_index import Accelerator, Student
+from vsc.storage import load_features, store_features, convert_to_dict
+from vsc.baseline.dns_index import Accelerator
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -56,9 +51,8 @@ logger.setLevel(logging.INFO)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--student",
-    help="DnS student used for indexing.",
-    choices=[x.name.lower() for x in Student],
+    "--torchscript_path",
+    help="Path to the fine-grained student model used for similarity calculation.",
     type=str,
     required=True,
 )
@@ -111,6 +105,64 @@ parser.add_argument(
 )
 
 
+class VCSLLocalizationDnS(VCSLLocalizationMaxSim):
+    def __init__(
+        self,
+        model,
+        queries_fine,
+        refs_fine,
+        queries_coarse,
+        refs_coarse,
+        model_type,
+        device,
+        symmetric=True,
+        geometric_mean=True,
+        **kwargs,
+    ):
+        super().__init__(queries_coarse, refs_coarse, model_type, **kwargs)
+
+        self.queries_fine = queries_fine
+        self.refs_fine = refs_fine
+
+        self.sim_model = model
+        self.device = device
+
+        self.symmetric = symmetric
+        self.geometric_mean = geometric_mean
+
+    def _rescale_binaries(self, x):
+        if "bin" in self.sim_model.fg_type:
+            x = 2 * x - 1
+        return x
+
+    @torch.no_grad()
+    def similarity(self, candidate: CandidatePair):
+
+        query = self.queries_fine[candidate.query_id].feature
+        ref = self.refs_fine[candidate.ref_id].feature
+
+        query = torch.from_numpy(query).to(self.device).float()
+        ref = torch.from_numpy(ref).to(self.device).float()
+
+        query = self._rescale_binaries(query)
+        ref = self._rescale_binaries(ref)
+
+        sim = self.sim_model(query, ref)
+        if self.symmetric:
+            simT = self.sim_model(ref, query).mT
+            sim = (sim + simT) / 2.0
+        sim = sim / 2.0 + 0.5
+        sim = sim.cpu().numpy()
+
+        if self.geometric_mean:
+            query = self.queries[candidate.query_id].feature
+            ref = self.refs[candidate.ref_id].feature
+
+            sim_cg = np.matmul(query, ref.T) + self.similarity_bias
+            sim = np.sqrt(sim.clip(1e-7) * sim_cg.clip(1e-7))
+        return sim
+
+
 def search(
     queries: List[VideoFeature],
     refs: List[VideoFeature],
@@ -130,8 +182,8 @@ def search(
 
 def localize_and_verify(
     model: torch.nn.Module,
-    queries_fine: List[VideoFeature],
-    refs_fine: List[VideoFeature],
+    queries_fine: Dict[str, VideoFeature],
+    refs_fine: Dict[str, VideoFeature],
     queries_coarse: List[VideoFeature],
     refs_coarse: List[VideoFeature],
     candidates: List[CandidatePair],
@@ -175,8 +227,8 @@ def localize_and_verify(
 
 def match(
     model: torch.nn.Module,
-    queries_fine: List[VideoFeature],
-    refs_fine: List[VideoFeature],
+    queries_fine: Dict[str, VideoFeature],
+    refs_fine: Dict[str, VideoFeature],
     queries_coarse: List[VideoFeature],
     refs_coarse: List[VideoFeature],
     output_path: str,
@@ -214,15 +266,21 @@ def main(args):
         raise Exception(
             f"Output path already exists: {args.output_path}. Do you want to --overwrite?"
         )
-    student = Student[args.student.upper()]
+
+    model = torch.jit.load(args.torchscript_path)
+    if "fg" != model.student_type:
+        raise Exception(
+            f"Only fine-grained student are accepted for similarity calculation."
+        )
+
     device = Accelerator[args.accelerator.upper()].get_device()
+    model = model.eval().to(device)
 
-    model = student.get_model().eval().to(device)
+    queries_fine = load_features(args.query_fine_features, Dataset.QUERIES)
+    queries_fine = convert_to_dict(queries_fine)
 
-    queries_fine = load_features(
-        args.query_fine_features, Dataset.QUERIES, as_dict=True
-    )
-    refs_fine = load_features(args.ref_fine_features, Dataset.REFS, as_dict=True)
+    refs_fine = load_features(args.ref_fine_features, Dataset.REFS)
+    refs_fine = convert_to_dict(refs_fine)
 
     queries_coarse = load_features(args.query_coarse_features, Dataset.QUERIES)
     refs_coarse = load_features(args.ref_coarse_features, Dataset.REFS)

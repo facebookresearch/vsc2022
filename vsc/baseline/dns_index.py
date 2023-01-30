@@ -32,25 +32,6 @@ from vsc.index import VideoFeature
 from vsc.metrics import Dataset
 
 from vsc.storage import load_features, store_features
-from vsc.baseline.dns.students import CoarseGrainedStudent, FineGrainedStudent
-
-
-class Student(enum.Enum):
-    FINE_ATT = enum.auto()
-    FINE_BIN = enum.auto()
-    COARSE = enum.auto()
-
-    def get_model(
-        self,
-    ):
-        return self._get_config(self)
-
-    def _get_config(self, value):
-        return {
-            self.FINE_ATT: FineGrainedStudent(attention=True, pretrained=True),
-            self.FINE_BIN: FineGrainedStudent(binarization=True, pretrained=True),
-            self.COARSE: CoarseGrainedStudent(pretrained=True),
-        }[value]
 
 
 class Accelerator(enum.Enum):
@@ -109,9 +90,8 @@ parser.add_argument(
     type=str,
 )
 parser.add_argument(
-    "--student",
-    help="DnS student used for indexing.",
-    choices=[x.name.lower() for x in Student],
+    "--torchscript_path",
+    help="Path to student model used for indexing.",
     type=str,
     required=True,
 )
@@ -137,15 +117,15 @@ def index_videos(
 
 
 def main(args):
-    if "fine" in args.student and args.score_norm_features:
+
+    model = torch.jit.load(args.torchscript_path)
+    if "fg" in model.student_type and args.score_norm_features:
         raise Exception(
             f"Student type {args.student} can not be combined with score normalization."
         )
 
-    student = Student[args.student.upper()]
     device = Accelerator[args.accelerator.upper()].get_device()
-
-    model = student.get_model().eval().to(device)
+    model = model.eval().to(device)
     extension = model.get_network_name()
 
     logger.info(f"Loading query features from {args.query_features}")

@@ -30,8 +30,6 @@ class InferenceTransforms(enum.Enum):
     RESIZE_288 = enum.auto()
     # Resize the short edge to 320, then take the center crop
     RESIZE_320_CENTER = enum.auto()
-    # Aspect-ratio preserving resize to 224, then take the center crop
-    RESIZE_224_CENTER = enum.auto()
     # Aspect-ratio preserving resize to 224x224
     RESIZE_224_SQUARE = enum.auto()
 
@@ -94,11 +92,6 @@ logger.setLevel(logging.INFO)
 
 def main(args):
     success = False
-    if args.baseline == "sscd" and args.torchscript_path is None:
-        raise Exception(
-            'Set either --torchscript_path when "sscd" is selected in'
-            "--baseline argument"
-        )
     if args.processes > 1 and args.distributed_size > 1:
         raise Exception(
             "Set either --processes (single-machine distributed) or "

@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 import numpy as np
 from vsc.index import VideoFeature
@@ -39,7 +39,7 @@ def same_value_ranges(values):
     yield value, start, len(values)
 
 
-def load_features(f, dataset: Optional[Dataset] = None, as_dict: bool = False):
+def load_features(f, dataset: Optional[Dataset] = None):
     data = np.load(f, allow_pickle=False)
     video_ids = data["video_ids"]
     feats = data["features"]
@@ -56,7 +56,7 @@ def load_features(f, dataset: Optional[Dataset] = None, as_dict: bool = False):
         print(f"timestamps.shape[1:] == [2]: {timestamps.shape[1:] == [2]}")
         raise ValueError(f"Unexpected timestamp shape. Got {timestamps.shape}")
 
-    results = dict() if as_dict else []
+    results = []
     for video_id, start, end in same_value_ranges(video_ids):
         video_id = format_video_id(video_id, dataset)
         item = VideoFeature(
@@ -64,8 +64,9 @@ def load_features(f, dataset: Optional[Dataset] = None, as_dict: bool = False):
             timestamps=timestamps[start:end],
             feature=feats[start:end, :],
         )
-        if as_dict:
-            results[video_id] = item
-        else:
-            results.append(item)
+        results.append(item)
     return results
+
+
+def convert_to_dict(features: List[VideoFeature]) -> Dict[str, VideoFeature]:
+    return {m.video_id: m for m in features}
