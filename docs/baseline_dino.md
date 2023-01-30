@@ -2,6 +2,7 @@
 The baseline can also be implemented with [DINO](https://arxiv.org/abs/2104.14294)
 features, using the pretrained ViT-S/16 provided in the official [repo](https://github.com/facebookresearch/dino) 
 that has similar computational requirements to a ResNet50, so as to meet the limitation of the challenge.
+We follow the feature extraction process for copy detection, as described in the original paper. 
 
 This baseline produces global frame descriptors with 768 dimensions and builds on the same process as the previous
 [SSCD baseline](baseline.md) for video retrieval and localization.
@@ -12,9 +13,14 @@ for the Descriptor Track of the challenge. Hence, it is considered only for the 
 Due to its poor performance when no normalization is applied, this baseline is benchmarked only with the
 use of score normalization.
 
+## Download the DINO model
+
+We provide the model used in our experiments. The torchscript version of the model can be found
+[here](https://mever.iti.gr/vsc2022/dino_vits16_cdpool.torchscript.pt).
+
 ## Inference
 
-We use the same inference script to extract DINO descriptors at one frame per
+Use the same inference script to extract DINO descriptors at one frame per
 second (1 fps).
 
 ### Training dataset
@@ -24,6 +30,7 @@ Also, select the `RESIZE_224_SQUARE` for the `--transforms` to use the appropria
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --torchscript_path ./dino_vits16_cdpool.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/training_queries_dino.npz \
@@ -32,31 +39,23 @@ python -m vsc.baseline.inference \
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --torchscript_path ./dino_vits16_cdpool.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/training_refs_dino.npz \
     --dataset_path ./training_dataset/refs
 ```
-For GPU inference, set `--accelerator cuda` and set `--processes` to
-the number of GPUs on the system.
-
-For CPU inference, set `--accelerator cpu` and set `--processes` to
-the desired number of inference processes.
-
-Multiple machine distributed inference is not tested here,
-but should be possible with a bit of work.
 
 ### Validation references
 Since this baseline is used only with score normalization baseline, we'll use the
 validation references as the "noise" dataset when evaluating on the
-training dataset, so do inference on that dataset too.
-(For validation predictions, we'll use the training references as the
-"noise" predictions.)
+training dataset.
 
 Run inference on references of the validation dataset to generate the "noise" dataset.
 ```
 python -m vsc.baseline.inference \
     --baseline dino \
+    --torchscript_path ./dino_vits16_cdpool.torchscript.pt \
     --transforms RESIZE_224_SQUARE \
     --accelerator cuda --processes 2 \
     --output_file ./output/validation_refs_dino.npz \
@@ -67,29 +66,9 @@ python -m vsc.baseline.inference \
 or codecs like ITQ, must only be trained on the training dataset.
 
 ## Matching
-Similar to the [SSCD baseline](baseline.md), the `sscd_baseline.py` script performs all
-phases of matching:retrieval, localization, and assigning scores to localized matches.
-
-
-Retrieval uses the [FAISS](https://github.com/facebookresearch/faiss)
-library, and will use GPU accelerated search if GPUs are found and
-the library is installed with GPU support.
-
-Localization uses the [VCSL](https://github.com/alipay/VCSL) library.
-We specifically use the temporal network flow (TN) method that VCSL
-provides.
-We mostly use off-the-shelf settings.
-The score normalization evaluation adjusts similarity since this
-method expects positive similarity in matching regions.
-
-The baseline script also runs a matching track evaluation, and a descriptor micro AP.
-The descriptor micro AP estimates the descriptor track score, but
-does not enforce the same limits as the `descriptor_eval.py` evaluation.
-
-The matching script provides several outputs in the `--output_path`
-directory, including precision-recall plots,
-score-normalized descriptor files, and both retrieved candidate pairs
-and localized matches in `.csv` formats.
+Similar to the [SSCD baseline](baseline.md), the `sscd_baseline.py` script performs all phases of matching, 
+relying on the [FAISS](https://github.com/facebookresearch/faiss) and [VCSL](https://github.com/alipay/VCSL) 
+libraries for retrieval and localization, respectively.
 
 Run the matching script providing the files with DINO descriptors to get
 the final results of the baseline. Also, provide a feature file for score normalization.
