@@ -9,8 +9,6 @@ We document the environments we've used for testing below:
 conda create --name vsc -c pytorch -c nvidia -c conda-forge pytorch \
   torchvision scikit-learn numpy pandas matplotlib faiss-gpu tqdm \
   pytorch-cuda=11.7
-conda activate vsc
-pip install einops
 ```
 
 We don't need pytorch for the codebase currently; this is just the environment I used.
@@ -26,7 +24,7 @@ conda create --name vsc-vcsl -c pytorch -c nvidia -c conda-forge pytorch \
   torchvision scikit-learn numpy pandas matplotlib faiss-gpu tqdm \
   networkx loguru numba cython h5py pytorch-cuda=11.7
 conda activate vsc-vcsl
-pip install tslearn einops
+pip install tslearn
 ```
 
 h5py is not needed, but installing it stops some log spam.
