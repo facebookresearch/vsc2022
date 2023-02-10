@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 import numpy as np
 from vsc.index import VideoFeature
@@ -59,11 +59,14 @@ def load_features(f, dataset: Optional[Dataset] = None):
     results = []
     for video_id, start, end in same_value_ranges(video_ids):
         video_id = format_video_id(video_id, dataset)
-        results.append(
-            VideoFeature(
-                video_id=video_id,
-                timestamps=timestamps[start:end],
-                feature=feats[start:end, :],
-            )
+        item = VideoFeature(
+            video_id=video_id,
+            timestamps=timestamps[start:end],
+            feature=feats[start:end, :],
         )
+        results.append(item)
     return results
+
+
+def convert_to_dict(features: List[VideoFeature]) -> Dict[str, VideoFeature]:
+    return {m.video_id: m for m in features}

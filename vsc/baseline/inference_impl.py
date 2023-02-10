@@ -7,6 +7,7 @@ import glob
 import itertools
 import logging
 import os
+import enum
 from typing import Iterable, List
 
 import numpy as np
@@ -15,7 +16,12 @@ import tqdm
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data._utils.collate import default_collate
 from torchvision import transforms
-from vsc.baseline.inference import Accelerator, InferenceTransforms, VideoReaderType
+from vsc.baseline.inference import (
+    Accelerator,
+    InferenceTransforms,
+    VideoReaderType,
+    Baseline,
+)
 from vsc.baseline.video_reader.ffmpeg_video_reader import FFMpegVideoReader
 from vsc.index import VideoFeature
 from vsc.storage import load_features, store_features
@@ -45,6 +51,15 @@ def build_transforms(transform: InferenceTransforms):
             [
                 transforms.Resize(320),
                 transforms.CenterCrop(320),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        ),
+        InferenceTransforms.RESIZE_224_SQUARE: transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -177,7 +192,7 @@ def worker_process(args, rank, world_size, output_filename):
 
     progress = tqdm.tqdm(total=dataset.num_videos())
     vfs = []
-    for vf in run_inference(loader, model, device):
+    for vf in run_inference(loader, model, device, args.store_fp16):
         vfs.append(vf)
         progress.update()
 
@@ -193,7 +208,7 @@ def worker_process(args, rank, world_size, output_filename):
 
 
 @torch.no_grad()
-def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
+def run_inference(dataloader, model, device, store_fp16) -> Iterable[VideoFeature]:
     name = None
     embeddings = []
     timestamps = []
@@ -211,7 +226,10 @@ def run_inference(dataloader, model, device) -> Iterable[VideoFeature]:
             timestamps = []
         name = names[0]
         img = batch["input"].to(device)
-        embeddings.append(model(img).cpu().numpy())
+        features = model(img).cpu()
+        if store_fp16:
+            features = features.half()
+        embeddings.append(features.numpy())
         timestamps.append(batch["timestamp"].numpy())
 
     yield VideoFeature(

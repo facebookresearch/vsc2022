@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import abc
+import torch
 from typing import List
 
 import numpy as np
