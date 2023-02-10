@@ -30,7 +30,7 @@ class InferenceTransforms(enum.Enum):
     RESIZE_288 = enum.auto()
     # Resize the short edge to 320, then take the center crop
     RESIZE_320_CENTER = enum.auto()
-    # Aspect-ratio preserving resize to 224x224
+    # Resize to 224x224
     RESIZE_224_SQUARE = enum.auto()
 
 
