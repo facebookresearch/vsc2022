@@ -45,6 +45,7 @@ Matching track segment AP: 0.3650
 | [SSCD](docs/baseline.md)      | :heavy_check_mark: | 0.6499         | 0.4692       |
 | [DINO](docs/baseline_dino.md) | :heavy_check_mark: | _0.4402_       | 0.3393       |
 | [DnS](docs/baseline_dns.md)   | :heavy_check_mark: | _0.4129_       | 0.3211       |
+
 **Note**: Numbers in _italics_ do not conform to challenge rules
 
 ## License
