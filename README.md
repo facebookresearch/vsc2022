@@ -25,6 +25,10 @@ See [testing](docs/testing.md)
 
 See [baseline](docs/baseline.md)
 
+### Downloading the data 
+
+NEW (2024-02-05): the dataset can be found here: [dataset](docs/dataset.md)
+
 ## Running evaluations
 
 ### Descriptor eval
